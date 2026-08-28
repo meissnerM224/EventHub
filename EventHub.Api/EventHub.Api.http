@@ -1,0 +1,8 @@
+@host = http://localhost:5000
+
+### Alle Events
+GET {{host}}/api/events
+Accept: application/json
+
+### OpenAPI-Dokument
+GET {{host}}/openapi/v1.json
