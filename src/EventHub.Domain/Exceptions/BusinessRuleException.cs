@@ -1,0 +1,5 @@
+namespace EventHub.Domain.Exceptions;
+
+public class BusinessRuleException(string message) : Exception(message)
+{
+}

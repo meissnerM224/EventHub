@@ -1,0 +1,34 @@
+using EventHub.Domain.Entities;
+using EventHub.Domain.Models;
+
+namespace EventHub.Domain.Interfaces;
+
+public interface IEventsService
+{
+    Task<List<EventSummary>> GetAllEventsAsync();
+    Task<EventDetail> GetEventByIdAsync(Guid eventId);
+
+    Task<EventSummary> CreateEventAsync(
+        string title,
+        string description,
+        string location,
+        DateTimeOffset startAt,
+        DateTimeOffset doorsOpenAt,
+        int maxParticipants,
+        Guid organizerId,
+        int categoryId
+    );
+
+    Task<EventDetail> UpdateEventAsync(
+        Guid eventId,
+        string title,
+        string description,
+        string location,
+        DateTimeOffset startAt,
+        DateTimeOffset doorsOpenAt,
+        int maxParticipants,
+        int categoryId
+    );
+    
+    Task CancelEventAsync(Guid eventId);
+}
