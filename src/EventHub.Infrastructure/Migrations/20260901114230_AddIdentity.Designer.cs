@@ -3,6 +3,7 @@ using System;
 using EventHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EventHub.Infrastructure.Migrations
 {
     [DbContext(typeof(EventHubDbContext))]
-    partial class EventHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901114230_AddIdentity")]
+    partial class AddIdentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,6 +40,9 @@ namespace EventHub.Infrastructure.Migrations
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("EventId1")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -44,6 +50,8 @@ namespace EventHub.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventId1");
 
                     b.HasIndex("UserId");
 
@@ -89,6 +97,9 @@ namespace EventHub.Infrastructure.Migrations
                     b.Property<int>("CategoryId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("CategoryId1")
+                        .HasColumnType("integer");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -125,6 +136,8 @@ namespace EventHub.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("CategoryId1");
 
                     b.HasIndex("OrganizerId");
 
@@ -352,9 +365,15 @@ namespace EventHub.Infrastructure.Migrations
 
             modelBuilder.Entity("EventHub.Domain.Entities.Booking", b =>
                 {
-                    b.HasOne("EventHub.Domain.Entities.Event", "Event")
+                    b.HasOne("EventHub.Domain.Entities.Event", null)
                         .WithMany()
                         .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EventHub.Domain.Entities.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -369,10 +388,16 @@ namespace EventHub.Infrastructure.Migrations
 
             modelBuilder.Entity("EventHub.Domain.Entities.Event", b =>
                 {
-                    b.HasOne("EventHub.Domain.Entities.Category", "Category")
+                    b.HasOne("EventHub.Domain.Entities.Category", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EventHub.Domain.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId1")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("EventHub.Infrastructure.Entities.AppUser", null)

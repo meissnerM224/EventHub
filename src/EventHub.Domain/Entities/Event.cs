@@ -15,7 +15,6 @@ public class Event
 
 
     public Guid OrganizerId { get; init; }
-    public User Organizer { get; init; } = null!;
 
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;

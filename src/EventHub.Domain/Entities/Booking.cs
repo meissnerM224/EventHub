@@ -4,14 +4,11 @@ namespace EventHub.Domain.Entities;
 
 public class Booking
 {
-    public Guid Id { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public BookingStatus Status { get; set; } = BookingStatus.Confirmed;
-    public DateTime? CancelledAt { get; set; }
-
-    public Guid EventId { get; set; }
-    public Event Event { get; set; } = null!;
-
-    public Guid UserId { get; set; }
-    public User User { get; set; } = null!;
+    public Guid Id { get; init; }
+    public Guid EventId { get; init; }
+    public Event Event { get; init; } = null!;   
+    public Guid UserId { get; init; }          
+    public BookingStatus Status { get; set; }
+    public DateTimeOffset BookedAt { get; init; }
+    public DateTimeOffset? CancelledAt { get; set; }
 }

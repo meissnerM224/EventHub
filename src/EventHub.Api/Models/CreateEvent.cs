@@ -16,7 +16,7 @@ public record CreateEvent
     public required DateTimeOffset DoorsOpenAt { get; init; }
     [Range(1, int.MaxValue)] 
     public required int MaxParticipants { get; init; }
-    public required Guid OrganizerId { get; init; }
+
     [Range(1, int.MaxValue)]
     public required int CategoryId { get; init; }
 }

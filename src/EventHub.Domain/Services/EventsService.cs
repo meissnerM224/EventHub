@@ -29,10 +29,12 @@ public class EventsService(IEventsRepository repository) : IEventsService
         int categoryId
     )
     {
+        startAt = startAt.ToUniversalTime();
+        doorsOpenAt = doorsOpenAt.ToUniversalTime();
         var existAlready = await repository.EventExistsAsync(title, location, startAt, null);
         if (existAlready) throw new AlreadyExistsException($"Event {title} at {location} already exists");
-        var organizer = await repository.GetOrganizerById(organizerId);
-        if (organizer is null)
+
+        if (!await repository.OrganizerExistsAsync(organizerId))
         {
             throw new NotFoundException("Organizer", organizerId);
         }
@@ -87,9 +89,12 @@ public class EventsService(IEventsRepository repository) : IEventsService
         DateTimeOffset startAt,
         DateTimeOffset doorsOpenAt,
         int maxParticipants,
-        int categoryId
+        int categoryId,
+        Guid currentUserId
     )
     {
+        startAt = startAt.ToUniversalTime();
+        doorsOpenAt = doorsOpenAt.ToUniversalTime();
         var existing = await repository.GetEventEntityByIdAsync(eventId);
         if (existing is null) throw new NotFoundException("Event", eventId);
         if (await repository.EventExistsAsync(title, location, startAt, eventId))
@@ -97,10 +102,11 @@ public class EventsService(IEventsRepository repository) : IEventsService
             throw new AlreadyExistsException($"Event {title} at {location} already exists");
         }
 
+        if (existing.OrganizerId != currentUserId) throw new ForbiddenException("Permission denied");
         var category = await repository.GetCategoryById(categoryId);
         if (category is null) throw new NotFoundException("Category", categoryId);
-        if (doorsOpenAt > startAt) throw new BusinessRuleException("DoorsOpenAt darf nicht nach StartAt liegen.");
-        if (startAt <= DateTimeOffset.UtcNow) throw new BusinessRuleException("StartAt muss in der Zukunft liegen.");
+        if (doorsOpenAt > startAt) throw new BusinessRuleException("DoorsOpenAt can't by before StartAt.");
+        if (startAt <= DateTimeOffset.UtcNow) throw new BusinessRuleException("StartAt must be in the future.");
 
 
         existing.Title = title;
@@ -111,15 +117,17 @@ public class EventsService(IEventsRepository repository) : IEventsService
         existing.MaxParticipants = maxParticipants;
         existing.CategoryId = categoryId;
 
+
         await repository.SaveChangesAsync();
 
         return await repository.GetEventByIdAsync(eventId) ?? throw new NotFoundException("Event", eventId);
     }
 
-    public async Task CancelEventAsync(Guid eventId)
+    public async Task CancelEventAsync(Guid eventId, Guid currentUser)
     {
         var existing = await repository.GetEventEntityByIdAsync(eventId);
         if (existing is null) throw new NotFoundException("Event", eventId);
+        if (existing.OrganizerId != currentUser) throw new ForbiddenException("Permission denied");
         if (existing.IsCancelled) return;
         existing.IsCancelled = true;
         existing.CancelledAt = DateTimeOffset.UtcNow;

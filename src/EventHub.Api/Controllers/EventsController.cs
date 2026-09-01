@@ -1,8 +1,11 @@
+using EventHub.Api.Extensions;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 using EventHub.Api.Models;
+using EventHub.Domain.Authorization;
 using EventHub.Domain.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EventHub.Api.Controllers;
 
@@ -32,6 +35,7 @@ public class EventsController(IEventsService service) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = RoleName.Organizer)]
     public async Task<ActionResult<EventSummary>> Create([FromBody] CreateEvent request)
     {
         try
@@ -43,7 +47,7 @@ public class EventsController(IEventsService service) : ControllerBase
                 request.StartAt,
                 request.DoorsOpenAt,
                 request.MaxParticipants,
-                request.OrganizerId,
+                User.GetUserId(),
                 request.CategoryId
             );
 
@@ -64,6 +68,7 @@ public class EventsController(IEventsService service) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = RoleName.Organizer)]
     public async Task<ActionResult<EventDetail>> Update(Guid id, [FromBody] UpdateEvent request)
     {
         try
@@ -76,10 +81,11 @@ public class EventsController(IEventsService service) : ControllerBase
                 request.StartAt,
                 request.DoorsOpenAt,
                 request.MaxParticipants,
-                request.CategoryId
+                request.CategoryId,
+                User.GetUserId()
             );
 
-            return Ok( result);
+            return Ok(result);
         }
         catch (NotFoundException e)
         {
@@ -89,20 +95,29 @@ public class EventsController(IEventsService service) : ControllerBase
         {
             return BadRequest(e.Message);
         }
+        catch (ForbiddenException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
+        }
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = RoleName.Organizer)]
     public async Task<IActionResult> Delete(Guid id)
     {
         try
         {
-            await service.CancelEventAsync(id);
+            await service.CancelEventAsync(id, User.GetUserId());
             return NoContent();
         }
         catch (NotFoundException e)
         {
             Console.WriteLine(e);
             return NotFound(e.Message);
+        }
+        catch (ForbiddenException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
     }
 }

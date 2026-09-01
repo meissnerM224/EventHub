@@ -27,8 +27,9 @@ public interface IEventsService
         DateTimeOffset startAt,
         DateTimeOffset doorsOpenAt,
         int maxParticipants,
-        int categoryId
+        int categoryId,
+        Guid organizerId 
     );
-    
-    Task CancelEventAsync(Guid eventId);
+
+    Task CancelEventAsync(Guid eventId, Guid currentUserId);
 }

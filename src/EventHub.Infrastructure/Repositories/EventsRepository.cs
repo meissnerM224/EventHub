@@ -9,12 +9,11 @@ namespace EventHub.Infrastructure.Repositories;
 
 public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
 {
-    private readonly DbContext _dbContext = dbContext;
 
 
     public async Task<List<EventSummary>> GetAllAsync()
     {
-        return await _dbContext
+        return await dbContext
             .Set<Event>()
             .Where(e => !e.IsCancelled)
             .Select(e => new EventSummary
@@ -25,16 +24,18 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
                 Location = e.Location,
                 CategoryName = e.Category.Name,
                 AvailableSpots = e.MaxParticipants -
-                                 _dbContext.Set<Booking>()
+                                 dbContext.Set<Booking>()
                                      .Count(b => b.EventId == e.Id && b.Status == BookingStatus.Confirmed),
             }).ToListAsync();
     }
 
     public async Task<EventDetail?> GetEventByIdAsync(Guid eventId)
     {
-        return await _dbContext.Set<Event>()
-            .Where(e => e.Id == eventId)
-            .Select(e => new EventDetail
+    return await    (
+            from e in dbContext.Set<Event>()
+            join u in dbContext.Users on e.OrganizerId equals u.Id
+            where e.Id == eventId
+            select new EventDetail
             {
                 EventId = e.Id,
                 EventTitle = e.Title,
@@ -46,29 +47,27 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
                 CategoryName = e.Category.Name,
                 CategoryDescription = e.Category.Description,
                 OrganizerId = e.OrganizerId,
-                OrganizerName = e.Organizer.Name,
+                OrganizerName = u.DisplayName,
                 MaxParticipants = e.MaxParticipants,
-                AvailableSpots = e.MaxParticipants - _dbContext.Set<Booking>()
+                AvailableSpots = e.MaxParticipants - dbContext.Set<Booking>()
                     .Count(b => b.EventId == e.Id && b.Status == BookingStatus.Confirmed),
                 IsCancelled = e.IsCancelled,
             }).FirstOrDefaultAsync();
     }
 
-    public async Task<User?> GetOrganizerById(Guid organizerId)
-    {
-        return await _dbContext.Set<User>().FindAsync(organizerId);
-    }
+    public Task<bool> OrganizerExistsAsync(Guid organizerId) =>
+        dbContext.Users.AnyAsync(u => u.Id == organizerId);
 
     public async Task<Category?> GetCategoryById(int categoryId)
     {
-        return await _dbContext.Set<Category>().FindAsync(categoryId);
+        return await dbContext.Set<Category>().FindAsync(categoryId);
     }
 
 
     public async Task CreateNewEvent(Event newEvent)
     {
-        _dbContext.Set<Event>().Add(newEvent);
-        await _dbContext.SaveChangesAsync();
+        dbContext.Set<Event>().Add(newEvent);
+        await dbContext.SaveChangesAsync();
     }
 
 
@@ -81,7 +80,7 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
         Guid? excludeId = null
     )
     {
-        return await _dbContext.Set<Event>().AnyAsync(e =>
+        return await dbContext.Set<Event>().AnyAsync(e =>
             e.Title == title &&
             e.Location == location &&
             e.StartsAt == startsAt &&
@@ -91,12 +90,12 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
 
     public async Task<Event?> GetEventEntityByIdAsync(Guid eventId)
     {
-        return await _dbContext.Set<Event>().FindAsync(eventId);
+        return await dbContext.Set<Event>().FindAsync(eventId);
     }
 
 
     public async Task SaveChangesAsync()
     {
-        await _dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
     }
 }
