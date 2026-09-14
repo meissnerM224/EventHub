@@ -47,7 +47,7 @@ public class AuthService(
         var user = await userManager.FindByEmailAsync(email);
         if (user is null || !await userManager.CheckPasswordAsync(user, password))
         {
-            throw new UnauthorizedAccessException("E-Mail oder Passwort ist falsch.");
+            throw new UnAuthorizedException("Login failed, E-Mail or Password are wrong.");
         }
 
         var roles = await userManager.GetRolesAsync(user);

@@ -18,4 +18,6 @@ public interface IEventsRepository
      Task<Event?> GetEventEntityByIdAsync(Guid eventId);
 
     Task SaveChangesAsync();
+    
+    Task<Event?> GetEventEntityForUpdateAsync(Guid id);
 }

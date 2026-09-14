@@ -120,4 +120,6 @@ public class EventsController(IEventsService service) : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
     }
+
+  
 }

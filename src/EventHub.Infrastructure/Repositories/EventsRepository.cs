@@ -9,8 +9,6 @@ namespace EventHub.Infrastructure.Repositories;
 
 public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
 {
-
-
     public async Task<List<EventSummary>> GetAllAsync()
     {
         return await dbContext
@@ -31,7 +29,7 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
 
     public async Task<EventDetail?> GetEventByIdAsync(Guid eventId)
     {
-    return await    (
+        return await (
             from e in dbContext.Set<Event>()
             join u in dbContext.Users on e.OrganizerId equals u.Id
             where e.Id == eventId
@@ -71,8 +69,6 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
     }
 
 
-
-
     public async Task<bool> EventExistsAsync(
         string title,
         string location,
@@ -94,8 +90,13 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
     }
 
 
-    public async Task SaveChangesAsync()
+    public async Task SaveChangesAsync() => await dbContext.SaveChangesAsync();
+
+
+    public Task<Event?> GetEventEntityForUpdateAsync(Guid id)
     {
-        await dbContext.SaveChangesAsync();
+        return dbContext.Set<Event>()
+            .FromSql($"""SELECT * FROM "Events" WHERE "Id" = {id} FOR UPDATE""")
+            .FirstOrDefaultAsync();
     }
 }

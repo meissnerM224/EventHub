@@ -1,5 +1,4 @@
 using EventHub.Domain.Models;
-using Microsoft.AspNetCore.Authentication;
 
 namespace EventHub.Domain.Interfaces;
 

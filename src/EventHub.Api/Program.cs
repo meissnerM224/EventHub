@@ -21,6 +21,9 @@ builder.Services.AddDbContext<EventHubDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")).LogTo(Console.WriteLine));
 builder.Services.AddScoped<IEventsRepository, EventsRepository>();
 builder.Services.AddScoped<IEventsService, EventsService>();
+builder.Services.AddScoped<IBookingsService, BookingsService>();
+builder.Services.AddScoped<ITransactionRunner, EfTransactionRunner>();
+builder.Services.AddScoped<IBookingRepository, BookingsRepository>();
 
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection(JwtOptions.SectionName));
