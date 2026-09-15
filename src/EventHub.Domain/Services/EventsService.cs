@@ -1,3 +1,4 @@
+using System.Diagnostics.Tracing;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
@@ -5,16 +6,40 @@ using EventHub.Domain.Models;
 
 namespace EventHub.Domain.Services;
 
-public class EventsService(IEventsRepository repository) : IEventsService
+public class EventsService(IEventsRepository repository, ICacheService cache) : IEventsService
 {
-    public async Task<List<EventSummary>> GetAllEventsAsync()
+    private const string ListPrefix = "events:list:";
+
+    private static string ListKey(EventFilter f) =>
+        $"{ListPrefix}c={f.CategoryId}:l={f.Location?.ToLowerInvariant()}:f={f.From:o}.t={f.To:o:o}";
+
+    private static string DetailKey(Guid id) => $"events:details:{id}";
+
+    public async Task<List<EventSummary>> GetAllEventsAsync(EventFilter filter)
     {
-        return await repository.GetAllAsync();
+        var normalized = new EventFilter
+        {
+            CategoryId = filter.CategoryId,
+            Location = filter.Location?.Trim(),
+            From = filter.From?.ToUniversalTime(),
+            To = filter.To?.ToUniversalTime()
+        };
+        if (normalized.From > normalized.To) throw new BusinessRuleException("'from' must bot be after 'to'.");
+        var key = ListKey(normalized);
+        var cached = await cache.GetAsync<List<EventSummary>>(key);
+        if (cached is not null) return cached;
+        var events = await repository.GetAllAsync(normalized);
+        await cache.SetAsync(key, events.ToList(), TimeSpan.FromMinutes(5));
+        return events;
     }
 
     public async Task<EventDetail> GetEventByIdAsync(Guid eventId)
     {
-        return await repository.GetEventByIdAsync(eventId) ?? throw new NotFoundException("Event", eventId);
+        var cached = await cache.GetAsync<EventDetail>(DetailKey(eventId));
+        if (cached is not null) return cached;
+        var details = await repository.GetEventByIdAsync(eventId) ?? throw new NotFoundException("Event", eventId);
+        await cache.SetAsync(DetailKey(eventId), details, TimeSpan.FromMinutes(5));
+        return details;
     }
 
 
@@ -68,7 +93,7 @@ public class EventsService(IEventsRepository repository) : IEventsService
             CategoryId = categoryId,
         };
         await repository.CreateNewEvent(newEvent);
-
+        await cache.RemoveByPrefixAsync(ListPrefix);
         return new EventSummary
         {
             Id = newEvent.Id,
@@ -119,7 +144,8 @@ public class EventsService(IEventsRepository repository) : IEventsService
 
 
         await repository.SaveChangesAsync();
-
+        await cache.RemoveByPrefixAsync(ListPrefix);
+        await cache.RemoveAsync(DetailKey(eventId));
         return await repository.GetEventByIdAsync(eventId) ?? throw new NotFoundException("Event", eventId);
     }
 
@@ -132,5 +158,8 @@ public class EventsService(IEventsRepository repository) : IEventsService
         existing.IsCancelled = true;
         existing.CancelledAt = DateTimeOffset.UtcNow;
         await repository.SaveChangesAsync();
+
+        await cache.RemoveByPrefixAsync(ListPrefix);
+        await cache.RemoveAsync(DetailKey(eventId));
     }
 }

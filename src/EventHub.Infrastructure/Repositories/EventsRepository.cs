@@ -9,11 +9,16 @@ namespace EventHub.Infrastructure.Repositories;
 
 public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
 {
-    public async Task<List<EventSummary>> GetAllAsync()
+    public async Task<List<EventSummary>> GetAllAsync(EventFilter? filter = null)
     {
-        return await dbContext
-            .Set<Event>()
-            .Where(e => !e.IsCancelled)
+        var query = dbContext.Events.Where(e => !e.IsCancelled);
+        if (filter?.CategoryId is { } categoryId) query = query.Where(e => e.CategoryId == categoryId);
+        if (!string.IsNullOrWhiteSpace(filter?.Location))
+            query = query.Where(e => e.Location.Contains(filter.Location));
+        if (filter?.From is { } from) query = query.Where(e => e.StartsAt >= from);
+        if (filter?.To is { } to) query = query.Where(e => e.StartsAt <= to);
+        return await query
+            .OrderBy(e => e.StartsAt)
             .Select(e => new EventSummary
             {
                 Id = e.Id,

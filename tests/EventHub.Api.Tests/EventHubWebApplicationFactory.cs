@@ -16,7 +16,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 
 namespace EventHub.Api.Tests;
 
@@ -28,11 +30,18 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
     public const string OtherOrganizerEmail = "other-organizer@test.com";
     public const string ParticipantEmail = "participant@test.com";
     public const string TestPassword = "Test1234!";
+    public const int FirstCategoryId = 1;
+    public const int SecondCategoryId = 2;
+    private const string FirstCategoryName = "Test Category";
+    private const string SecondCategoryName = "Second Test Categor";
 
     public static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
 
     private readonly PostgreSqlContainer _container =
         new PostgreSqlBuilder("postgres:16-alpine").Build();
+
+
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -42,7 +51,8 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
             {
                 ["Jwt:Key"] = TestJwtKey,
                 ["Jwt:Issuer"] = "EventHub.Tests",
-                ["Jwt:Audience"] = "EventHub.Tests"
+                ["Jwt:Audience"] = "EventHub.Tests",
+                ["ConnectionString:Redis"] = _redis.GetConnectionString()
             });
         });
 
@@ -60,7 +70,6 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
 
             services.AddDbContext<EventHubDbContext>(options =>
                 options.UseNpgsql(_container.GetConnectionString()));
-
             // Program.cs captures jwt from builder.Configuration before test overrides apply,
             // so we must also override the validation parameters here.
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -75,13 +84,15 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
+        await Task.WhenAll(_container.StartAsync(), _redis.StartAsync());
+
 
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EventHubDbContext>();
         await db.Database.MigrateAsync();
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+
 
         await CreateUserAsync(userManager, OrganizerId, OrganizerEmail,
             "Test Organizer", RoleName.Organizer);
@@ -90,9 +101,13 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
         await CreateUserAsync(userManager, Guid.NewGuid(), ParticipantEmail,
             "Test Participant", RoleName.Participant);
 
-        db.Categories.Add(new Category { Id = 1, Name = "Test Category" });
+        db.Categories.Add(new Category { Id = FirstCategoryId, Name = FirstCategoryName });
+        db.Categories.Add(new Category { Id = SecondCategoryId, Name = SecondCategoryName });
+
+
         await db.SaveChangesAsync();
     }
+
 
     private static async Task CreateUserAsync(
         UserManager<AppUser> userManager,
@@ -134,6 +149,7 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
     public new async Task DisposeAsync()
     {
         await _container.DisposeAsync();
+        await _redis.DisposeAsync();
         await base.DisposeAsync();
     }
 }

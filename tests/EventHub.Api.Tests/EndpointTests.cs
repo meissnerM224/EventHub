@@ -9,25 +9,48 @@ namespace EventHub.Api.Tests;
 
 public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClassFixture<EventHubWebApplicationFactory>
 {
-    private static object NewEvent(string title, int maxParticipants = 1000) => new
+    private static object NewEvent(
+        string title,
+        int maxParticipants = 1000,
+        int categoryId = 1,
+        DateTimeOffset? startAt = null,
+        DateTimeOffset? doorsOpenAt = null) => new
     {
         title,
         description = "Test description",
         location = "Theater Kassel",
-        startAt = DateTimeOffset.UtcNow.AddHours(2),
-        doorsOpenAt = DateTimeOffset.UtcNow.AddHours(1),
+        startAt = startAt ?? DateTimeOffset.UtcNow.AddHours(2),
+        doorsOpenAt = doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
         maxParticipants,
-        categoryId = 1
+        categoryId
     };
 
 
-    private async Task<Guid> CreateEventAsync(string title, int maxParticipants = 10)
+    private async Task<Guid> CreateEventAsync(
+        string title,
+        int maxParticipants = 10,
+        int categoryId = 1,
+        DateTimeOffset? startAt = null,
+        DateTimeOffset? doorsOpenAt = null)
     {
         var organizer = await factory.CreateAuthenticatedClientAsync(
             EventHubWebApplicationFactory.OrganizerEmail);
         var response =
-            await organizer.PostAsJsonAsync("/api/events", NewEvent(title, maxParticipants: maxParticipants));
-        response.EnsureSuccessStatusCode();
+            await organizer.PostAsJsonAsync(
+                "/api/events",
+                NewEvent(title: title,
+                    maxParticipants: maxParticipants,
+                    startAt: startAt ?? DateTimeOffset.UtcNow.AddHours(2),
+                    doorsOpenAt: doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
+                    categoryId: categoryId
+                ));
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                $"Create event '{title}' failed: {(int)response.StatusCode}\n{body}");
+        }
+
         return Guid.Parse(response.Headers.Location!.Segments.Last());
     }
 
@@ -36,6 +59,46 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
     {
         var response = await factory.CreateClient().GetAsync("/api/events");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByCategory()
+    {
+        await CreateEventAsync("Cat Filter A", categoryId: EventHubWebApplicationFactory.FirstCategoryId);
+        await CreateEventAsync("Cat Filter B", categoryId: EventHubWebApplicationFactory.SecondCategoryId);
+
+        var client = factory.CreateClient();
+        var events = await client.GetFromJsonAsync<List<EventSummary>>("/api/events?categoryId=1");
+
+        Assert.All(events!, e => Assert.Equal("Test Category", e.CategoryName));
+        Assert.Contains(events!, e => e.Title == "Cat Filter A");
+        Assert.DoesNotContain(events!, e => e.Title == "Cat Filter B");
+    }
+
+    [Fact]
+    public async Task GetAll_ReturnsBadRequest_WhenFromIsAfterTo()
+    {
+        var from = DateTimeOffset.UtcNow.AddDays(10).ToString("o");
+        var to = DateTimeOffset.UtcNow.AddDays(1).ToString("o");
+
+        var response = await factory.CreateClient().GetAsync(
+            $"/api/events?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByDateRange()
+    {
+        var from = DateTimeOffset.UtcNow.AddDays(30);
+        await CreateEventAsync("Far Future", startAt: from.AddDays(5));
+        await CreateEventAsync("Near Future", startAt: DateTimeOffset.UtcNow.AddDays(1));
+
+        var events = await factory.CreateClient()
+            .GetFromJsonAsync<List<EventSummary>>($"/api/events?from={Uri.EscapeDataString(from.ToString("o"))}");
+
+        Assert.Contains(events!, e => e.Title == "Far Future");
+        Assert.DoesNotContain(events!, e => e.Title == "Near Future");
     }
 
     [Fact]
@@ -136,11 +199,6 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
         const string email = EventHubWebApplicationFactory.OrganizerEmail;
         var client = await factory.CreateAuthenticatedClientAsync(email);
         var response = await client.PutAsJsonAsync($"/api/events/{Guid.NewGuid()}", updated);
-        if (response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"Login for {email} failed: {(int)response.StatusCode}\n{body}");
-        }
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -387,5 +445,43 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
         var response = await stranger.GetAsync($"/api/events/{eventId}/bookings");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsUpdatedEvent_AfterUpdate()
+    {
+        var organizer = await factory.CreateAuthenticatedClientAsync(
+            EventHubWebApplicationFactory.OrganizerEmail);
+        var created = await organizer.PostAsJsonAsync("/api/events", NewEvent("Cache Detail"));
+        var location = created.Headers.Location!;
+
+        await factory.CreateClient().GetAsync(location); // füllt den Cache
+
+        var updated = new
+        {
+            title = "Cache Detail Updated",
+            description = "New Description",
+            location = "Kassel",
+            startAt = DateTimeOffset.UtcNow.AddHours(5),
+            doorsOpenAt = DateTimeOffset.UtcNow.AddHours(4),
+            maxParticipants = 100,
+            categoryId = EventHubWebApplicationFactory.FirstCategoryId
+        };
+        (await organizer.PutAsJsonAsync(location, updated)).EnsureSuccessStatusCode();
+
+        var detail = await factory.CreateClient().GetFromJsonAsync<EventDetail>(location.ToString());
+        Assert.Equal("Cache Detail Updated", detail!.EventTitle);
+    }
+
+    [Fact]
+    public async Task GetAll_ContainsNewEvent_AfterCreate()
+    {
+        var client = factory.CreateClient();
+        await client.GetAsync("/api/events"); // füllt den Cache
+
+        await CreateEventAsync("Cache List Entry");
+
+        var events = await client.GetFromJsonAsync<List<EventSummary>>("/api/events");
+        Assert.Contains(events!, e => e.Title == "Cache List Entry");
     }
 }

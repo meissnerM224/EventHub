@@ -5,7 +5,7 @@ namespace EventHub.Domain.Interfaces;
 
 public interface IEventsService
 {
-    Task<List<EventSummary>> GetAllEventsAsync();
+    Task<List<EventSummary>> GetAllEventsAsync(EventFilter filter);
     Task<EventDetail> GetEventByIdAsync(Guid eventId);
 
     Task<EventSummary> CreateEventAsync(
@@ -28,7 +28,7 @@ public interface IEventsService
         DateTimeOffset doorsOpenAt,
         int maxParticipants,
         int categoryId,
-        Guid organizerId 
+        Guid organizerId
     );
 
     Task CancelEventAsync(Guid eventId, Guid currentUserId);

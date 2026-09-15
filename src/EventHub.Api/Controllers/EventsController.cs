@@ -14,10 +14,16 @@ namespace EventHub.Api.Controllers;
 public class EventsController(IEventsService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<EventSummary>>> GetAll()
+    public async Task<ActionResult<List<EventSummary>>> GetAll([FromQuery] EventFilter filter)
     {
-        var events = await service.GetAllEventsAsync();
-        return Ok(events);
+        try
+        {
+            return Ok(await service.GetAllEventsAsync(filter));
+        }
+        catch (BusinessRuleException e)
+        {
+            return BadRequest(e.Message);
+        }
     }
 
     [HttpGet("{id:guid}")]
@@ -120,6 +126,4 @@ public class EventsController(IEventsService service) : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
     }
-
-  
 }

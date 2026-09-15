@@ -2,6 +2,7 @@
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Services;
 using EventHub.Infrastructure.Authentication;
+using EventHub.Infrastructure.Caching;
 using EventHub.Infrastructure.Entities;
 using EventHub.Infrastructure.Persistence;
 using EventHub.Infrastructure.Repositories;
@@ -11,14 +12,21 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+var connection = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connection))
+    throw new InvalidOperationException("ConnectionStrings:Default is not configured.");
 builder.Services.AddDbContext<EventHubDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")).LogTo(Console.WriteLine));
+{
+    options.UseNpgsql(connection);
+    if (builder.Environment.IsDevelopment()) options.EnableSensitiveDataLogging();
+});
 builder.Services.AddScoped<IEventsRepository, EventsRepository>();
 builder.Services.AddScoped<IEventsService, EventsService>();
 builder.Services.AddScoped<IBookingsService, BookingsService>();
@@ -59,10 +67,15 @@ builder.Services
             ClockSkew = TimeSpan.FromSeconds(30)
         };
     });
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (string.IsNullOrWhiteSpace(redisConnection))
+    throw new InvalidOperationException("Redis connection string is not configured.");
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 var app = builder.Build();
 
