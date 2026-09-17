@@ -17,7 +17,7 @@ namespace EventHub.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -75,6 +75,26 @@ namespace EventHub.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Erlebe deine Lieblingskünstler live",
+                            Name = "Konzert"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Businesstreffen",
+                            Name = "Workshop"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Treffe dich mit Menschen die deine Interessen teilen",
+                            Name = "Meetup"
+                        });
                 });
 
             modelBuilder.Entity("EventHub.Domain.Entities.Event", b =>
@@ -204,6 +224,47 @@ namespace EventHub.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("EventHub.Infrastructure.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("IX_OutboxMessages_Pending")
+                        .HasFilter("\"ProcessedAt\" IS NULL");
+
+                    b.ToTable("OutboxMessages", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
@@ -242,8 +303,8 @@ namespace EventHub.Infrastructure.Migrations
                         {
                             Id = new Guid("8f2a1c40-1f3d-4c9a-9b7e-2a0d5c1e7a02"),
                             ConcurrencyStamp = "8f2a1c40-1f3d-4c9a-9b7e-2a0d5c1e7a02",
-                            Name = "Participants",
-                            NormalizedName = "PARTICIPANTS"
+                            Name = "Participant",
+                            NormalizedName = "PARTICIPANT"
                         });
                 });
 

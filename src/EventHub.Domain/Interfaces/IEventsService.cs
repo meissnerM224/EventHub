@@ -1,4 +1,3 @@
-using EventHub.Domain.Entities;
 using EventHub.Domain.Models;
 
 namespace EventHub.Domain.Interfaces;

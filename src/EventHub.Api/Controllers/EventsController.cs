@@ -4,7 +4,6 @@ using EventHub.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 using EventHub.Api.Models;
 using EventHub.Domain.Authorization;
-using EventHub.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 
 namespace EventHub.Api.Controllers;
@@ -14,116 +13,77 @@ namespace EventHub.Api.Controllers;
 public class EventsController(IEventsService service) : ControllerBase
 {
     [HttpGet]
+    [ProducesResponseType<List<EventSummary>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<List<EventSummary>>> GetAll([FromQuery] EventFilter filter)
     {
-        try
-        {
-            return Ok(await service.GetAllEventsAsync(filter));
-        }
-        catch (BusinessRuleException e)
-        {
-            return BadRequest(e.Message);
-        }
+        return Ok(await service.GetAllEventsAsync(filter));
     }
 
     [HttpGet("{id:guid}")]
+    [ProducesResponseType<EventDetail>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventDetail>> GetById(Guid id)
     {
-        try
-        {
-            var result = await service.GetEventByIdAsync(id);
-            return Ok(result);
-        }
-        catch (NotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        var result = await service.GetEventByIdAsync(id);
+        return Ok(result);
     }
 
     [HttpPost]
     [Authorize(Roles = RoleName.Organizer)]
+    [ProducesResponseType<EventSummary>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<EventSummary>> Create([FromBody] CreateEvent request)
     {
-        try
-        {
-            var result = await service.CreateEventAsync(
-                request.Title,
-                request.Description,
-                request.Location,
-                request.StartAt,
-                request.DoorsOpenAt,
-                request.MaxParticipants,
-                User.GetUserId(),
-                request.CategoryId
-            );
+        var result = await service.CreateEventAsync(
+            request.Title,
+            request.Description,
+            request.Location,
+            request.StartAt,
+            request.DoorsOpenAt,
+            request.MaxParticipants,
+            User.GetUserId(),
+            request.CategoryId
+        );
 
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-        }
-        catch (NotFoundException e)
-        {
-            return NotFound(e.Message);
-        }
-        catch (BusinessRuleException e)
-        {
-            return BadRequest(e.Message);
-        }
-        catch (AlreadyExistsException e)
-        {
-            return Conflict(e.Message);
-        }
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = RoleName.Organizer)]
+    [ProducesResponseType<EventDetail>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<EventDetail>> Update(Guid id, [FromBody] UpdateEvent request)
     {
-        try
-        {
-            var result = await service.UpdateEventAsync(
-                id,
-                request.Title,
-                request.Description,
-                request.Location,
-                request.StartAt,
-                request.DoorsOpenAt,
-                request.MaxParticipants,
-                request.CategoryId,
-                User.GetUserId()
-            );
+        var result = await service.UpdateEventAsync(
+            id,
+            request.Title,
+            request.Description,
+            request.Location,
+            request.StartAt,
+            request.DoorsOpenAt,
+            request.MaxParticipants,
+            request.CategoryId,
+            User.GetUserId()
+        );
 
-            return Ok(result);
-        }
-        catch (NotFoundException e)
-        {
-            return NotFound(e.Message);
-        }
-        catch (BusinessRuleException e)
-        {
-            return BadRequest(e.Message);
-        }
-        catch (ForbiddenException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
-        }
+        return Ok(result);
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = RoleName.Organizer)]
+    [ProducesResponseType<EventDetail>(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        try
-        {
-            await service.CancelEventAsync(id, User.GetUserId());
-            return NoContent();
-        }
-        catch (NotFoundException e)
-        {
-            Console.WriteLine(e);
-            return NotFound(e.Message);
-        }
-        catch (ForbiddenException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
-        }
+        await service.CancelEventAsync(id, User.GetUserId());
+        return NoContent();
     }
 }
