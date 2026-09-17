@@ -28,7 +28,7 @@ services:
   
   migrate:
     build: .
-    image: ghcr.io/meissnerM224/eventhub.latest
+    image: ghcr.io/meissnerm224/eventhub:latest
     entrypoint: [ "dotnet", "EventHub.Api.dll", "--migrate-only" ]
     environment:
       ConnectionStrings__Default: "Host=db;Port=${POSTGRES_PORT};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
@@ -42,7 +42,7 @@ services:
     restart: "no"
   
   api:
-    image: ghcr.io/meissnerM224/eventhub.latest
+    image: ghcr.io/meissnerm224/eventhub:latest
     environment:
       ConnectionStrings__Default: "Host=db;Port=${POSTGRES_PORT};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       ConnectionStrings__Redis: "cache:6379"
