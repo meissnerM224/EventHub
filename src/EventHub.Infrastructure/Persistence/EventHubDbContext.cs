@@ -74,10 +74,25 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
                 .IsUnique()
                 .HasFilter("\"Status\" = 1");
         });
+        // OutboxMessage
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("OutboxMessages");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Type).HasMaxLength(200);
+            entity.Property(m => m.Payload).HasColumnType("jsonb");
+            entity.Property(m => m.TraceId).HasMaxLength(100);
+            entity.Property(m => m.LastError).HasMaxLength(2000);
+
+            entity.HasIndex(m => m.OccurredAt)
+                .HasDatabaseName("IX_OutboxMessages_Pending")
+                .HasFilter("\"ProcessedAt\" IS NULL");
+        });
         SeedRoles(modelBuilder);
+        SeedCategories(modelBuilder);
     }
-  
-    
+
+
     private static void SeedRoles(ModelBuilder builder) =>
         builder.Entity<IdentityRole<Guid>>().HasData(
             new IdentityRole<Guid>
@@ -94,4 +109,16 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
                 NormalizedName = RoleName.Participant.ToUpperInvariant(),
                 ConcurrencyStamp = "8f2a1c40-1f3d-4c9a-9b7e-2a0d5c1e7a02"
             });
+
+    private static void SeedCategories(ModelBuilder builder) =>
+        builder.Entity<Category>().HasData(
+            new Category { Id = 1, Name = "Konzert", Description = "Erlebe deine Lieblingskünstler live" },
+            new Category { Id = 2, Name = "Workshop", Description = "Businesstreffen" },
+            new Category
+            {
+                Id = 3,
+                Name = "Meetup",
+                Description = "Treffe dich mit Menschen die deine Interessen teilen"
+            }
+        );
 }

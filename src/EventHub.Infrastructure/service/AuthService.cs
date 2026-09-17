@@ -21,7 +21,7 @@ public class AuthService(
 
         if (await userManager.FindByEmailAsync(email) is not null)
         {
-            throw new AlreadyExistsException($"{email} is already registered.");
+            throw new AlreadyExistException($"{email} is already registered.");
         }
 
         var user = new AppUser
@@ -47,7 +47,7 @@ public class AuthService(
         var user = await userManager.FindByEmailAsync(email);
         if (user is null || !await userManager.CheckPasswordAsync(user, password))
         {
-            throw new UnAuthorizedException("Login failed, E-Mail or Password are wrong.");
+            throw new UnauthorizedException("Login failed, E-Mail or Password are wrong.");
         }
 
         var roles = await userManager.GetRolesAsync(user);

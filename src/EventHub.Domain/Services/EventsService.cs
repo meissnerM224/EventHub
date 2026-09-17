@@ -1,4 +1,3 @@
-using System.Diagnostics.Tracing;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
@@ -11,7 +10,7 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
     private const string ListPrefix = "events:list:";
 
     private static string ListKey(EventFilter f) =>
-        $"{ListPrefix}c={f.CategoryId}:l={f.Location?.ToLowerInvariant()}:f={f.From:o}.t={f.To:o:o}";
+        $"{ListPrefix}:c={f.CategoryId}:l={f.Location?.ToLowerInvariant()}:f={f.From:o}.t={f.To:o:o}";
 
     private static string DetailKey(Guid id) => $"events:details:{id}";
 
@@ -57,7 +56,7 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         startAt = startAt.ToUniversalTime();
         doorsOpenAt = doorsOpenAt.ToUniversalTime();
         var existAlready = await repository.EventExistsAsync(title, location, startAt, null);
-        if (existAlready) throw new AlreadyExistsException($"Event {title} at {location} already exists");
+        if (existAlready) throw new AlreadyExistException($"Event {title} at {location} already exists");
 
         if (!await repository.OrganizerExistsAsync(organizerId))
         {
@@ -72,12 +71,12 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
 
         if (doorsOpenAt > startAt)
         {
-            throw new BusinessRuleException("DoorsOpenAt darf nicht nach StartAt liegen.");
+            throw new BusinessRuleException("DoorsOpenAt cant not before StartAt.");
         }
 
         if (startAt <= DateTimeOffset.UtcNow)
         {
-            throw new BusinessRuleException("StartAt muss in der Zukunft liegen.");
+            throw new BusinessRuleException("StartAt must be in the future.");
         }
 
         var newEvent = new Event
@@ -124,7 +123,7 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         if (existing is null) throw new NotFoundException("Event", eventId);
         if (await repository.EventExistsAsync(title, location, startAt, eventId))
         {
-            throw new AlreadyExistsException($"Event {title} at {location} already exists");
+            throw new AlreadyExistException($"Event {title} at {location} already exists");
         }
 
         if (existing.OrganizerId != currentUserId) throw new ForbiddenException("Permission denied");

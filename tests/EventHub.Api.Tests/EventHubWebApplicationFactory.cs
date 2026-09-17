@@ -1,11 +1,13 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using EventHub.Api.Tests.Fakes;
 using EventHub.Domain.Authorization;
-using EventHub.Domain.Entities;
+using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using EventHub.Infrastructure.Entities;
 using EventHub.Infrastructure.Persistence;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -16,13 +18,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using StackExchange.Redis;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
 namespace EventHub.Api.Tests;
 
-public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
+[UsedImplicitly]
+public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string TestJwtKey = "test-key-only-for-integration-tests-do-not-use-elsewhere";
 
@@ -32,13 +34,14 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
     public const string TestPassword = "Test1234!";
     public const int FirstCategoryId = 1;
     public const int SecondCategoryId = 2;
-    private const string FirstCategoryName = "Test Category";
-    private const string SecondCategoryName = "Second Test Categor";
+    public const string FirstCategoryName = "Konzert";
+    private static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
 
-    public static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
+    public RecordingNotificationSender Notifications =>
+        Services.GetRequiredService<RecordingNotificationSender>();
 
     private readonly PostgreSqlContainer _container =
-        new PostgreSqlBuilder("postgres:16-alpine").Build();
+        new PostgreSqlBuilder("postgres:17-alpine").Build();
 
 
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
@@ -52,7 +55,8 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
                 ["Jwt:Key"] = TestJwtKey,
                 ["Jwt:Issuer"] = "EventHub.Tests",
                 ["Jwt:Audience"] = "EventHub.Tests",
-                ["ConnectionString:Redis"] = _redis.GetConnectionString()
+                ["ConnectionStrings:Redis"] = _redis.GetConnectionString(),
+                ["Outbox:PollIntervalMs"] = "200"
             });
         });
 
@@ -67,7 +71,11 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
                             d.ServiceType.GenericTypeArguments[0] == typeof(EventHubDbContext))
                 .ToList();
             toRemove.ForEach(d => services.Remove(d));
-
+            services.RemoveAll<INotificationSender>();
+            services.AddSingleton<RecordingNotificationSender>();
+            services.AddScoped<INotificationSender>(sp => sp.GetRequiredService<RecordingNotificationSender>());
+            services.AddSingleton<RecordingNotificationSender>();
+            services.AddScoped<INotificationSender>(sp => sp.GetRequiredService<RecordingNotificationSender>());
             services.AddDbContext<EventHubDbContext>(options =>
                 options.UseNpgsql(_container.GetConnectionString()));
             // Program.cs captures jwt from builder.Configuration before test overrides apply,
@@ -101,10 +109,6 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
         await CreateUserAsync(userManager, Guid.NewGuid(), ParticipantEmail,
             "Test Participant", RoleName.Participant);
 
-        db.Categories.Add(new Category { Id = FirstCategoryId, Name = FirstCategoryName });
-        db.Categories.Add(new Category { Id = SecondCategoryId, Name = SecondCategoryName });
-
-
         await db.SaveChangesAsync();
     }
 
@@ -125,7 +129,7 @@ public class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAs
         var result = await userManager.CreateAsync(user, TestPassword);
         if (!result.Succeeded)
             throw new InvalidOperationException(
-                $"Seeding von '{email}' fehlgeschlagen: " +
+                $"Seeding from '{email}' failed: " +
                 string.Join(" ", result.Errors.Select(e => e.Description)));
 
         await userManager.AddToRoleAsync(user, role);

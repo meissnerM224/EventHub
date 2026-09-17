@@ -17,8 +17,8 @@ public class Event
     public Guid OrganizerId { get; init; }
 
     public int CategoryId { get; set; }
-    public Category Category { get; set; } = null!;
+    public Category Category { get; init; } = null!;
 
-    public bool IsCancelled { get; set; } = false;
+    public bool IsCancelled { get; set; }
     public DateTimeOffset? CancelledAt { get; set; }
 }

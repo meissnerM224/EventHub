@@ -4,26 +4,46 @@ using System.Net.Http.Json;
 using System.Text;
 using EventHub.Domain.Models;
 using EventHub.Domain.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Tests;
 
-public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClassFixture<EventHubWebApplicationFactory>
+[Collection("EventHub")]
+public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 {
+    // Helper
+    private async Task<HttpClient> CreateParticipantClientAsync()
+    {
+        var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            Email = $"race-{Guid.NewGuid():N}@test.de",
+            Password = EventHubWebApplicationFactory.TestPassword,
+            DisplayName = "Racer",
+            Role = RoleName.Participant
+        });
+        response.EnsureSuccessStatusCode();
+
+        var auth = await response.Content.ReadFromJsonAsync<AuthResult>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+        return client;
+    }
+
     private static object NewEvent(
         string title,
         int maxParticipants = 1000,
         int categoryId = 1,
         DateTimeOffset? startAt = null,
         DateTimeOffset? doorsOpenAt = null) => new
-    {
-        title,
-        description = "Test description",
-        location = "Theater Kassel",
-        startAt = startAt ?? DateTimeOffset.UtcNow.AddHours(2),
-        doorsOpenAt = doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
-        maxParticipants,
-        categoryId
-    };
+        {
+            title,
+            description = "Test description",
+            location = "Theater Kassel",
+            startAt = startAt ?? DateTimeOffset.UtcNow.AddHours(2),
+            doorsOpenAt = doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
+            maxParticipants,
+            categoryId
+        };
 
 
     private async Task<Guid> CreateEventAsync(
@@ -70,7 +90,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
         var client = factory.CreateClient();
         var events = await client.GetFromJsonAsync<List<EventSummary>>("/api/events?categoryId=1");
 
-        Assert.All(events!, e => Assert.Equal("Test Category", e.CategoryName));
+        Assert.All(events!, e => Assert.Equal(EventHubWebApplicationFactory.FirstCategoryName, e.CategoryName));
         Assert.Contains(events!, e => e.Title == "Cat Filter A");
         Assert.DoesNotContain(events!, e => e.Title == "Cat Filter B");
     }
@@ -280,7 +300,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
         var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new
         {
             Email = "unknown@test.de",
-            Password = "Test1234!"
+            Password = EventHubWebApplicationFactory.TestPassword
         });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -341,23 +361,6 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
-    }
-
-    private async Task<HttpClient> CreateParticipantClientAsync()
-    {
-        var client = factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            Email = $"race-{Guid.NewGuid():N}@test.de",
-            Password = "Test1234!",
-            DisplayName = "Racer",
-            Role = RoleName.Participant
-        });
-        response.EnsureSuccessStatusCode();
-
-        var auth = await response.Content.ReadFromJsonAsync<AuthResult>();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
-        return client;
     }
 
     [Fact]
@@ -455,7 +458,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
         var created = await organizer.PostAsJsonAsync("/api/events", NewEvent("Cache Detail"));
         var location = created.Headers.Location!;
 
-        await factory.CreateClient().GetAsync(location); // füllt den Cache
+        await factory.CreateClient().GetAsync(location);
 
         var updated = new
         {
@@ -477,11 +480,22 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory) : IClas
     public async Task GetAll_ContainsNewEvent_AfterCreate()
     {
         var client = factory.CreateClient();
-        await client.GetAsync("/api/events"); // füllt den Cache
-
+        await client.GetAsync("/api/events");
         await CreateEventAsync("Cache List Entry");
 
         var events = await client.GetFromJsonAsync<List<EventSummary>>("/api/events");
         Assert.Contains(events!, e => e.Title == "Cache List Entry");
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsProblemDetails_WhenEventDoesNotExist()
+    {
+        var client = factory.CreateClient();
+        var response = await client.GetAsync($"/api/events/{Guid.NewGuid()}");
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(404, problem!.Status);
+        Assert.True(problem.Extensions.ContainsKey("traceId"));
     }
 }

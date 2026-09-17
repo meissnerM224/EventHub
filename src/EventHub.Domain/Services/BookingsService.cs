@@ -1,15 +1,18 @@
+using System.Diagnostics;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
+using EventHub.Domain.Messaging;
 using EventHub.Domain.Models;
 
 namespace EventHub.Domain.Services;
 
-public class BookingsService(
+public sealed class BookingsService(
     IBookingRepository bookingRepository,
     IEventsRepository eventsRepository,
-    ITransactionRunner transactionRunner)
+    ITransactionRunner transactionRunner,
+    INotificationQueue notificationQueue)
     : IBookingsService
 {
     public async Task<IReadOnlyList<BookingSummary>> GetBookingsAsync(Guid eventId, Guid currentUserId)
@@ -23,9 +26,10 @@ public class BookingsService(
         return await bookingRepository.GetConfirmedBookingsAsync(eventId);
     }
 
-    public Task<BookingConfirmation> BookAsync(Guid eventId, Guid userId)
+    public async Task<BookingConfirmation> BookAsync(Guid eventId, Guid userId)
     {
-        return transactionRunner.RunAsync(async () =>
+        var traceId = Activity.Current?.Id;
+        return await transactionRunner.RunAsync(async () =>
         {
             var evt = await eventsRepository.GetEventEntityForUpdateAsync(eventId);
 
@@ -38,7 +42,7 @@ public class BookingsService(
 
             if (await bookingRepository.HasConfirmedBookingAsync(eventId, userId))
             {
-                throw new AlreadyExistsException("You already signed up for this Event");
+                throw new AlreadyExistException("You already signed up for this Event");
             }
 
             var confirmed = await bookingRepository.CountConfirmedAsync(eventId);
@@ -52,7 +56,8 @@ public class BookingsService(
                 BookedAt = DateTimeOffset.UtcNow
             };
             await bookingRepository.AddAsync(bookingRequest);
-            return new BookingConfirmation
+
+            var confirmation = new BookingConfirmation
             {
                 BookingId = bookingRequest.Id,
                 EventId = evt.Id,
@@ -60,6 +65,14 @@ public class BookingsService(
                 EventStartAt = evt.StartsAt,
                 BookedAt = bookingRequest.BookedAt,
             };
+            await notificationQueue.EnqueueAsync(
+                new BookingConfirmationMessage(
+                    bookingRequest.Id,
+                    userId,
+                    confirmation,
+                    traceId),
+                CancellationToken.None);
+            return confirmation;
         });
     }
 

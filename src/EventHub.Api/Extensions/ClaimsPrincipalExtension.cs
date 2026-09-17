@@ -11,6 +11,6 @@ public static class ClaimsPrincipalExtension
         return Guid.TryParse(value, out var id)
             ? id
             : throw new InvalidOperationException(
-                "Der Token enthält keine gültige Nutzer-Id.");
-    }   
+                "Token doesn't contains user-Id.");
+    }
 }

@@ -1,0 +1,7 @@
+services:
+  migrate:
+    build: .
+    image: eventhub-api:local
+    
+  api:
+    image: eventhub-api:local

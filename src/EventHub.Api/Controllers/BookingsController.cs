@@ -1,5 +1,4 @@
 using EventHub.Api.Extensions;
-using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -13,57 +12,31 @@ namespace EventHub.Api.Controllers;
 public class BookingsController(IBookingsService service) : ControllerBase
 {
     [HttpGet]
+    [ProducesResponseType<IReadOnlyList<BookingSummary>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<BookingSummary>>> GetBookings(Guid eventId)
     {
-        try
-        {
-            return Ok(await service.GetBookingsAsync(eventId, User.GetUserId()));
-        }
-        catch (NotFoundException e)
-        {
-            Console.WriteLine(e);
-            return NotFound();
-        }
-        catch (ForbiddenException e)
-        {
-            Console.WriteLine(e);
-            return StatusCode(StatusCodes.Status403Forbidden, e.Message);
-        }
+        return Ok(await service.GetBookingsAsync(eventId, User.GetUserId()));
     }
 
     [HttpPost]
+    [ProducesResponseType<BookingConfirmation>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BookingConfirmation>> Booking(Guid eventId)
     {
-        try
-        {
-            var confirmation = await service.BookAsync(eventId, User.GetUserId());
-            return StatusCode(StatusCodes.Status201Created, confirmation);
-        }
-        catch (NotFoundException e)
-        {
-            return StatusCode(StatusCodes.Status404NotFound, e.Message);
-        }
-        catch (FullyBookedException e)
-        {
-            return Conflict(e.Message);
-        }
+        var confirmation = await service.BookAsync(eventId, User.GetUserId());
+        return StatusCode(StatusCodes.Status201Created, confirmation);
     }
 
     [HttpDelete("me")]
+    [ProducesResponseType<ActionResult>(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteBooking(Guid eventId)
     {
-        try
-        {
-            await service.CancelBookingAsync(eventId, User.GetUserId());
-            return NoContent();
-        }
-        catch (NotFoundException e)
-        {
-            return NotFound(e.Message);
-        }
-        catch (BusinessRuleException e)
-        {
-            return BadRequest(e.Message);
-        }
+        await service.CancelBookingAsync(eventId, User.GetUserId());
+        return NoContent();
     }
 }
