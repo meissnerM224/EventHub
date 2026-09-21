@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using Amazon.S3;
 using EventHub.Api.Tests.Fakes;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Interfaces;
@@ -18,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using Testcontainers.Minio;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
@@ -27,15 +29,16 @@ namespace EventHub.Api.Tests;
 public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string TestJwtKey = "test-key-only-for-integration-tests-do-not-use-elsewhere";
-
     public const string OrganizerEmail = "organizer@test.com";
     public const string OtherOrganizerEmail = "other-organizer@test.com";
     public const string ParticipantEmail = "participant@test.com";
     public const string TestPassword = "Test1234!";
+    private const string MioIoUser = "testuser";
     public const int FirstCategoryId = 1;
     public const int SecondCategoryId = 2;
     public const string FirstCategoryName = "Konzert";
     private static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
+    public const string Bucket = "media";
 
     public RecordingNotificationSender Notifications =>
         Services.GetRequiredService<RecordingNotificationSender>();
@@ -43,6 +46,12 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     private readonly PostgreSqlContainer _container =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
 
+    private readonly MinioContainer _minio = new MinioBuilder("quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z")
+        .WithUsername(MioIoUser)
+        .WithPassword(TestPassword)
+        .Build();
+
+    public IAmazonS3 S3 { get; private set; } = null!;
 
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
@@ -56,7 +65,11 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
                 ["Jwt:Issuer"] = "EventHub.Tests",
                 ["Jwt:Audience"] = "EventHub.Tests",
                 ["ConnectionStrings:Redis"] = _redis.GetConnectionString(),
-                ["Outbox:PollIntervalMs"] = "200"
+                ["Outbox:PollIntervalMs"] = "200",
+                ["Storage:Endpoint"] = _minio.GetConnectionString(),
+                ["Storage:AccessKey"] = MioIoUser,
+                ["Storage:SecretKey"] = TestPassword,
+                ["Storage:Bucket"] = Bucket,
             });
         });
 
@@ -92,7 +105,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_container.StartAsync(), _redis.StartAsync());
+        await Task.WhenAll(_container.StartAsync(), _redis.StartAsync(), _minio.StartAsync());
 
 
         using var scope = Services.CreateScope();
@@ -110,6 +123,13 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             "Test Participant", RoleName.Participant);
 
         await db.SaveChangesAsync();
+
+        S3 = new AmazonS3Client(MioIoUser, TestPassword, new AmazonS3Config
+        {
+            ServiceURL = _minio.GetConnectionString(),
+            ForcePathStyle = true
+        });
+        await S3.PutBucketAsync(Bucket);
     }
 
 
@@ -154,6 +174,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     {
         await _container.DisposeAsync();
         await _redis.DisposeAsync();
+        await _minio.DisposeAsync();
         await base.DisposeAsync();
     }
 }

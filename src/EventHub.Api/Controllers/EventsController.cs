@@ -1,10 +1,11 @@
 using EventHub.Api.Extensions;
-using EventHub.Domain.Interfaces;
-using EventHub.Domain.Models;
-using Microsoft.AspNetCore.Mvc;
 using EventHub.Api.Models;
 using EventHub.Domain.Authorization;
+using EventHub.Domain.Interfaces;
+using EventHub.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
 
 namespace EventHub.Api.Controllers;
 
@@ -41,6 +42,7 @@ public class EventsController(IEventsService service) : ControllerBase
             request.Title,
             request.Description,
             request.Location,
+            imageUrl: request.Image,
             request.StartAt,
             request.DoorsOpenAt,
             request.MaxParticipants,
@@ -65,6 +67,7 @@ public class EventsController(IEventsService service) : ControllerBase
             id,
             request.Title,
             request.Description,
+            request.Image,
             request.Location,
             request.StartAt,
             request.DoorsOpenAt,
