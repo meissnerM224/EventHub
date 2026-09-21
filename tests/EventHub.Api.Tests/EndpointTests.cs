@@ -5,6 +5,7 @@ using System.Text;
 using EventHub.Api.Models;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Models;
+using EventHub.Domain.Storage;
 using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -540,7 +541,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         Assert.EndsWith(".webp", result.Url);
 
         var key = result.Url["/media/".Length..];
-        var stored = await factory.S3.GetObjectAsync(EventHubWebApplicationFactory.Bucket, key);
+        var stored = await factory.S3.GetObjectAsync(ImagePath.Bucket, key);
 
         Assert.Equal("image/webp", stored.Headers.ContentType);
         Assert.True(stored.ContentLength > 0);
