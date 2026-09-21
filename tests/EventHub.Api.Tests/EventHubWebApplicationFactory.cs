@@ -6,6 +6,7 @@ using EventHub.Api.Tests.Fakes;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
+using EventHub.Domain.Storage;
 using EventHub.Infrastructure.Entities;
 using EventHub.Infrastructure.Persistence;
 using JetBrains.Annotations;
@@ -38,7 +39,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     public const int SecondCategoryId = 2;
     public const string FirstCategoryName = "Konzert";
     private static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
-    public const string Bucket = "media";
+
 
     public RecordingNotificationSender Notifications =>
         Services.GetRequiredService<RecordingNotificationSender>();
@@ -69,7 +70,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
                 ["Storage:Endpoint"] = _minio.GetConnectionString(),
                 ["Storage:AccessKey"] = MioIoUser,
                 ["Storage:SecretKey"] = TestPassword,
-                ["Storage:Bucket"] = Bucket,
+                ["Storage:Bucket"] = ImagePath.Bucket,
             });
         });
 
@@ -107,13 +108,17 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     {
         await Task.WhenAll(_container.StartAsync(), _redis.StartAsync(), _minio.StartAsync());
 
-
+        Environment.SetEnvironmentVariable("ConnectionStrings__Default", _container.GetConnectionString());
+        S3 = new AmazonS3Client(MioIoUser, TestPassword, new AmazonS3Config
+        {
+            ServiceURL = _minio.GetConnectionString(),
+            ForcePathStyle = true
+        });
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EventHubDbContext>();
         await db.Database.MigrateAsync();
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-
 
         await CreateUserAsync(userManager, OrganizerId, OrganizerEmail,
             "Test Organizer", RoleName.Organizer);
@@ -123,13 +128,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             "Test Participant", RoleName.Participant);
 
         await db.SaveChangesAsync();
-
-        S3 = new AmazonS3Client(MioIoUser, TestPassword, new AmazonS3Config
-        {
-            ServiceURL = _minio.GetConnectionString(),
-            ForcePathStyle = true
-        });
-        await S3.PutBucketAsync(Bucket);
+        await S3.PutBucketAsync(ImagePath.Bucket);
     }
 
 
@@ -172,6 +171,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     public new async Task DisposeAsync()
     {
+        Environment.SetEnvironmentVariable("ConnectionStrings__Default", null);
         await _container.DisposeAsync();
         await _redis.DisposeAsync();
         await _minio.DisposeAsync();
