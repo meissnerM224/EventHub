@@ -39,5 +39,3 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
         env:
-          Jwt__Key: "ci-test-key-at-least-32-characters-long-for-hmac-sha256"
-          ConnectionStrings__Redis: "localhost:6379"
