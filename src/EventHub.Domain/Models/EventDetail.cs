@@ -4,6 +4,7 @@ public class EventDetail
 {
     public required Guid EventId { get; init; }
     public required string EventTitle { get; init; }
+    public string? EventImageUrl { get; init; }
     public required string EventDescription { get; init; }
     public required string EventLocation { get; init; }
     public required DateTimeOffset EventStartsAt { get; init; }

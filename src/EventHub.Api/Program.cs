@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Net;
 using System.Text;
+using Amazon.S3;
 using EventHub.Api.ErrorHandling;
 using EventHub.Api.Extensions;
 using EventHub.Api.Logging;
@@ -14,10 +15,12 @@ using EventHub.Infrastructure.Messaging;
 using EventHub.Infrastructure.Persistence;
 using EventHub.Infrastructure.Repositories;
 using EventHub.Infrastructure.Service;
+using EventHub.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
@@ -119,6 +122,21 @@ try
     });
     builder.Services.AddScoped<ICacheService, RedisCacheService>();
     builder.Services.AddHealthChecks().AddDbContextCheck<EventHubDbContext>();
+    builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
+
+    builder.Services.AddSingleton<IAmazonS3>(sp =>
+    {
+        var o = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
+        return new AmazonS3Client(o.AccessKey, o.SecretKey, new AmazonS3Config
+        {
+            ServiceURL = o.Endpoint,
+            ForcePathStyle = true
+        });
+    });
+
+    builder.Services.AddScoped<IImageStorage, S3ImageStorage>();
+
+
     var app = builder.Build();
 
     if (args.Contains("--migrate-only"))

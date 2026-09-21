@@ -2,11 +2,23 @@ using EventHub.Domain.Entities;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
+using EventHub.Domain.Storage;
 
 namespace EventHub.Domain.Services;
 
 public class EventsService(IEventsRepository repository, ICacheService cache) : IEventsService
 {
+    private static string? NormalizeImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl)) return null;
+        if (!imageUrl.StartsWith(ImagePath.EventImagePrefix, StringComparison.Ordinal) || imageUrl.Contains(".."))
+        {
+            throw new BusinessRuleException("imageUrl must referenced an uploaded image.");
+        }
+
+        return imageUrl;
+    }
+
     private const string ListPrefix = "events:list:";
 
     private static string ListKey(EventFilter f) =>
@@ -20,6 +32,7 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         {
             CategoryId = filter.CategoryId,
             Location = filter.Location?.Trim(),
+            ImageUrl = filter.ImageUrl?.Trim(),
             From = filter.From?.ToUniversalTime(),
             To = filter.To?.ToUniversalTime()
         };
@@ -42,20 +55,19 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
     }
 
 
-    public async Task<EventSummary> CreateEventAsync(
-        string title,
+    public async Task<EventSummary> CreateEventAsync(string title,
         string description,
         string location,
+        string? imageUrl,
         DateTimeOffset startAt,
         DateTimeOffset doorsOpenAt,
         int maxParticipants,
         Guid organizerId,
-        int categoryId
-    )
+        int categoryId)
     {
-        startAt = startAt.ToUniversalTime();
-        doorsOpenAt = doorsOpenAt.ToUniversalTime();
-        var existAlready = await repository.EventExistsAsync(title, location, startAt, null);
+        var startAtData = startAt.ToUniversalTime();
+        var doorsOpenAtData = doorsOpenAt.ToUniversalTime();
+        var existAlready = await repository.EventExistsAsync(title, location, startAtData, null);
         if (existAlready) throw new AlreadyExistException($"Event {title} at {location} already exists");
 
         if (!await repository.OrganizerExistsAsync(organizerId))
@@ -64,29 +76,24 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         }
 
         var category = await repository.GetCategoryById(categoryId);
-        if (category is null)
-        {
-            throw new NotFoundException("Category", categoryId);
-        }
+        if (category is null) throw new NotFoundException("Category", categoryId);
 
-        if (doorsOpenAt > startAt)
-        {
-            throw new BusinessRuleException("DoorsOpenAt cant not before StartAt.");
-        }
 
-        if (startAt <= DateTimeOffset.UtcNow)
-        {
-            throw new BusinessRuleException("StartAt must be in the future.");
-        }
+        if (doorsOpenAtData > startAtData) throw new BusinessRuleException("DoorsOpenAt cant not before StartAt.");
+
+
+        if (startAtData <= DateTimeOffset.UtcNow) throw new BusinessRuleException("StartAt must be in the future.");
+        var normalizedImageUrl = NormalizeImageUrl(imageUrl);
 
         var newEvent = new Event
         {
             Id = Guid.NewGuid(),
             Title = title,
+            ImageUrl = normalizedImageUrl,
             Description = description,
             Location = location,
-            StartsAt = startAt,
-            DoorsOpenAt = doorsOpenAt,
+            StartsAt = startAtData,
+            DoorsOpenAt = doorsOpenAtData,
             MaxParticipants = maxParticipants,
             OrganizerId = organizerId,
             CategoryId = categoryId,
@@ -97,6 +104,7 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         {
             Id = newEvent.Id,
             Title = newEvent.Title,
+            ImageUrl = newEvent.ImageUrl,
             Location = newEvent.Location,
             StartsAt = newEvent.StartsAt,
             AvailableSpots = newEvent.MaxParticipants,
@@ -109,6 +117,7 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         Guid eventId,
         string title,
         string description,
+        string? imageUrl,
         string location,
         DateTimeOffset startAt,
         DateTimeOffset doorsOpenAt,
@@ -117,11 +126,11 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         Guid currentUserId
     )
     {
-        startAt = startAt.ToUniversalTime();
-        doorsOpenAt = doorsOpenAt.ToUniversalTime();
+        var startAtData = startAt.ToUniversalTime();
+        var doorsOpenAtData = doorsOpenAt.ToUniversalTime();
         var existing = await repository.GetEventEntityByIdAsync(eventId);
         if (existing is null) throw new NotFoundException("Event", eventId);
-        if (await repository.EventExistsAsync(title, location, startAt, eventId))
+        if (await repository.EventExistsAsync(title, location, startAtData, eventId))
         {
             throw new AlreadyExistException($"Event {title} at {location} already exists");
         }
@@ -129,15 +138,16 @@ public class EventsService(IEventsRepository repository, ICacheService cache) : 
         if (existing.OrganizerId != currentUserId) throw new ForbiddenException("Permission denied");
         var category = await repository.GetCategoryById(categoryId);
         if (category is null) throw new NotFoundException("Category", categoryId);
-        if (doorsOpenAt > startAt) throw new BusinessRuleException("DoorsOpenAt can't by before StartAt.");
-        if (startAt <= DateTimeOffset.UtcNow) throw new BusinessRuleException("StartAt must be in the future.");
+        if (doorsOpenAtData > startAtData) throw new BusinessRuleException("DoorsOpenAt can't by before StartAt.");
+        if (startAtData <= DateTimeOffset.UtcNow) throw new BusinessRuleException("StartAt must be in the future.");
 
 
         existing.Title = title;
         existing.Description = description;
+        existing.ImageUrl = NormalizeImageUrl(imageUrl);
         existing.Location = location;
-        existing.StartsAt = startAt;
-        existing.DoorsOpenAt = doorsOpenAt;
+        existing.StartsAt = startAtData;
+        existing.DoorsOpenAt = doorsOpenAtData;
         existing.MaxParticipants = maxParticipants;
         existing.CategoryId = categoryId;
 

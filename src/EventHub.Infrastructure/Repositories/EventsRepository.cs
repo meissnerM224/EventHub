@@ -1,7 +1,7 @@
-using EventHub.Domain.Models;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
 using EventHub.Domain.Interfaces;
+using EventHub.Domain.Models;
 using EventHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +15,8 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
         if (filter?.CategoryId is { } categoryId) query = query.Where(e => e.CategoryId == categoryId);
         if (!string.IsNullOrWhiteSpace(filter?.Location))
             query = query.Where(e => e.Location.Contains(filter.Location));
+        if (!string.IsNullOrWhiteSpace(filter?.ImageUrl))
+            query = query.Where(e => e.Location.Contains(filter.ImageUrl));
         if (filter?.From is { } from) query = query.Where(e => e.StartsAt >= from);
         if (filter?.To is { } to) query = query.Where(e => e.StartsAt <= to);
         return await query
@@ -23,6 +25,7 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
             {
                 Id = e.Id,
                 Title = e.Title,
+                ImageUrl = e.ImageUrl,
                 StartsAt = e.StartsAt,
                 Location = e.Location,
                 CategoryName = e.Category.Name,
@@ -42,6 +45,7 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
             {
                 EventId = e.Id,
                 EventTitle = e.Title,
+                EventImageUrl = e.ImageUrl,
                 EventDescription = e.Description,
                 EventLocation = e.Location,
                 EventStartsAt = e.StartsAt,
@@ -58,13 +62,9 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
             }).FirstOrDefaultAsync();
     }
 
-    public Task<bool> OrganizerExistsAsync(Guid organizerId) =>
-        dbContext.Users.AnyAsync(u => u.Id == organizerId);
+    public Task<bool> OrganizerExistsAsync(Guid organizerId) => dbContext.Users.AnyAsync(u => u.Id == organizerId);
 
-    public async Task<Category?> GetCategoryById(int categoryId)
-    {
-        return await dbContext.Set<Category>().FindAsync(categoryId);
-    }
+    public async Task<Category?> GetCategoryById(int categoryId) => await dbContext.Categories.FindAsync(categoryId);
 
 
     public async Task CreateNewEvent(Event newEvent)
@@ -89,10 +89,7 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
         );
     }
 
-    public async Task<Event?> GetEventEntityByIdAsync(Guid eventId)
-    {
-        return await dbContext.Set<Event>().FindAsync(eventId);
-    }
+    public async Task<Event?> GetEventEntityByIdAsync(Guid eventId) => await dbContext.Events.FindAsync(eventId);
 
 
     public async Task SaveChangesAsync() => await dbContext.SaveChangesAsync();

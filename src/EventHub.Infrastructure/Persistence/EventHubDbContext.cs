@@ -39,6 +39,7 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.ImageUrl).HasMaxLength(512);
             entity.Property(e => e.Description).HasMaxLength(400);
             entity.Property(e => e.Location).HasMaxLength(100);
 

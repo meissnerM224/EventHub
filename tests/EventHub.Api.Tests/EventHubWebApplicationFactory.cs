@@ -1,23 +1,22 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
+using Amazon.S3;
 using EventHub.Api.Tests.Fakes;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
+using EventHub.Domain.Storage;
 using EventHub.Infrastructure.Entities;
 using EventHub.Infrastructure.Persistence;
 using JetBrains.Annotations;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.Tokens;
+using Testcontainers.Minio;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
@@ -27,89 +26,75 @@ namespace EventHub.Api.Tests;
 public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string TestJwtKey = "test-key-only-for-integration-tests-do-not-use-elsewhere";
+    private const string MiniIoUser = "testuser";
+    public const string TestPassword = "Test1234!";
 
     public const string OrganizerEmail = "organizer@test.com";
     public const string OtherOrganizerEmail = "other-organizer@test.com";
     public const string ParticipantEmail = "participant@test.com";
-    public const string TestPassword = "Test1234!";
     public const int FirstCategoryId = 1;
     public const int SecondCategoryId = 2;
     public const string FirstCategoryName = "Konzert";
     private static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
 
-    public RecordingNotificationSender Notifications =>
-        Services.GetRequiredService<RecordingNotificationSender>();
-
-    private readonly PostgreSqlContainer _container =
+    private readonly PostgreSqlContainer _postgres =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
-
 
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
+    private readonly MinioContainer _minio = new MinioBuilder("quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z")
+        .WithUsername(MiniIoUser)
+        .WithPassword(TestPassword)
+        .Build();
+
+    private Dictionary<string, string> _environment = [];
+    public IAmazonS3 S3 { get; private set; } = null!;
+
+    public RecordingNotificationSender Notifications =>
+        Services.GetRequiredService<RecordingNotificationSender>();
+
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration(config =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Jwt:Key"] = TestJwtKey,
-                ["Jwt:Issuer"] = "EventHub.Tests",
-                ["Jwt:Audience"] = "EventHub.Tests",
-                ["ConnectionStrings:Redis"] = _redis.GetConnectionString(),
-                ["Outbox:PollIntervalMs"] = "200"
-            });
-        });
-
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<DbContextOptions<EventHubDbContext>>();
-
-            var toRemove = services
-                .Where(d => d.ServiceType.IsGenericType &&
-                            d.ServiceType.Name.StartsWith("IDbContextOptionsConfiguration") &&
-                            d.ServiceType.GenericTypeArguments.Length == 1 &&
-                            d.ServiceType.GenericTypeArguments[0] == typeof(EventHubDbContext))
-                .ToList();
-            toRemove.ForEach(d => services.Remove(d));
             services.RemoveAll<INotificationSender>();
             services.AddSingleton<RecordingNotificationSender>();
             services.AddScoped<INotificationSender>(sp => sp.GetRequiredService<RecordingNotificationSender>());
-            services.AddSingleton<RecordingNotificationSender>();
-            services.AddScoped<INotificationSender>(sp => sp.GetRequiredService<RecordingNotificationSender>());
-            services.AddDbContext<EventHubDbContext>(options =>
-                options.UseNpgsql(_container.GetConnectionString()));
-            // Program.cs captures jwt from builder.Configuration before test overrides apply,
-            // so we must also override the validation parameters here.
-            services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
-            {
-                options.TokenValidationParameters.IssuerSigningKey =
-                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwtKey));
-                options.TokenValidationParameters.ValidIssuer = "EventHub.Tests";
-                options.TokenValidationParameters.ValidAudience = "EventHub.Tests";
-            });
         });
     }
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_container.StartAsync(), _redis.StartAsync());
-
-
+        await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync(), _minio.StartAsync());
+        _environment = new Dictionary<string, string>
+        {
+            ["ConnectionStrings__Default"] = _postgres.GetConnectionString(),
+            ["ConnectionStrings__Redis"] = _redis.GetConnectionString(),
+            ["Jwt__Key"] = TestJwtKey,
+            ["Jwt__Issuer"] = "EventHub.Tests",
+            ["Jwt__Audience"] = "EventHub.Tests",
+            ["Storage__Endpoint"] = _minio.GetConnectionString(),
+            ["Storage__AccessKey"] = MiniIoUser,
+            ["Storage__SecretKey"] = TestPassword,
+            ["Outbox__PollIntervalMs"] = "200",
+            ["Storage__Bucket"] = ImagePath.Bucket,
+        };
+        foreach (var (key, value) in _environment) Environment.SetEnvironmentVariable(key, value);
+        S3 = new AmazonS3Client(MiniIoUser, TestPassword, new AmazonS3Config
+        {
+            ServiceURL = _minio.GetConnectionString(),
+            ForcePathStyle = true
+        });
+        await S3.PutBucketAsync(ImagePath.Bucket);
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EventHubDbContext>();
         await db.Database.MigrateAsync();
 
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-
-
-        await CreateUserAsync(userManager, OrganizerId, OrganizerEmail,
-            "Test Organizer", RoleName.Organizer);
-        await CreateUserAsync(userManager, Guid.NewGuid(), OtherOrganizerEmail,
-            "Other Organizer", RoleName.Organizer);
-        await CreateUserAsync(userManager, Guid.NewGuid(), ParticipantEmail,
-            "Test Participant", RoleName.Participant);
-
-        await db.SaveChangesAsync();
+        var manager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await CreateUserAsync(manager, OrganizerId, OrganizerEmail, "Test Organizer", RoleName.Organizer);
+        await CreateUserAsync(manager, Guid.NewGuid(), OtherOrganizerEmail, "O", RoleName.Organizer);
+        await CreateUserAsync(manager, Guid.NewGuid(), ParticipantEmail, "Test", RoleName.Participant);
     }
 
 
@@ -152,8 +137,10 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     public new async Task DisposeAsync()
     {
-        await _container.DisposeAsync();
+        foreach (var key in _environment.Keys) Environment.SetEnvironmentVariable(key, null);
+        await _postgres.DisposeAsync();
         await _redis.DisposeAsync();
+        await _minio.DisposeAsync();
         await base.DisposeAsync();
     }
 }

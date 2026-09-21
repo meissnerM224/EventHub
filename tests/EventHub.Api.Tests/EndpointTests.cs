@@ -2,9 +2,14 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
-using EventHub.Domain.Models;
+using EventHub.Api.Models;
 using EventHub.Domain.Authorization;
+using EventHub.Domain.Models;
+using EventHub.Domain.Storage;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace EventHub.Api.Tests;
 
@@ -29,25 +34,47 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         return client;
     }
 
+    private static MultipartFormDataContent ImageContent()
+    {
+        using var image = new Image<Rgba32>(40, 30);
+        using var ms = new MemoryStream();
+        image.Save(ms, new PngEncoder());
+
+        var file = new ByteArrayContent(ms.ToArray());
+        file.Headers.ContentType = new("image/png")
+        {
+            CharSet = null
+        };
+
+        return new MultipartFormDataContent { { file, "file", "test.png" } };
+    }
+
+
     private static object NewEvent(
         string title,
+        string? image = null,
         int maxParticipants = 1000,
         int categoryId = 1,
         DateTimeOffset? startAt = null,
-        DateTimeOffset? doorsOpenAt = null) => new
+        DateTimeOffset? doorsOpenAt = null)
+    {
+        return new
         {
             title,
             description = "Test description",
+            Image = image,
             location = "Theater Kassel",
             startAt = startAt ?? DateTimeOffset.UtcNow.AddHours(2),
             doorsOpenAt = doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
             maxParticipants,
             categoryId
         };
+    }
 
 
     private async Task<Guid> CreateEventAsync(
         string title,
+        string? image = null,
         int maxParticipants = 10,
         int categoryId = 1,
         DateTimeOffset? startAt = null,
@@ -59,6 +86,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
             await organizer.PostAsJsonAsync(
                 "/api/events",
                 NewEvent(title: title,
+                    image: image,
                     maxParticipants: maxParticipants,
                     startAt: startAt ?? DateTimeOffset.UtcNow.AddHours(2),
                     doorsOpenAt: doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
@@ -497,5 +525,152 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal(404, problem!.Status);
         Assert.True(problem.Extensions.ContainsKey("traceId"));
+    }
+
+    [Fact]
+    public async Task Upload_StoresObject_AndReturnsMediaPath()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+
+        var response = await client.PostAsync("/api/uploads/images", ImageContent());
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, body);
+
+        var result = await response.Content.ReadFromJsonAsync<UploadResult>();
+        Assert.StartsWith("/media/events/", result!.Url);
+        Assert.EndsWith(".webp", result.Url);
+
+        var key = result.Url["/media/".Length..];
+        var stored = await factory.S3.GetObjectAsync(ImagePath.Bucket, key);
+
+        Assert.Equal("image/webp", stored.Headers.ContentType);
+        Assert.True(stored.ContentLength > 0);
+    }
+
+    [Fact]
+    public async Task Upload_ReturnsBadRequest_WhenFileIsNotAnImage()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+
+        var content = new MultipartFormDataContent();
+        var bytes = new ByteArrayContent([.. "kein bild"u8]);
+        bytes.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(bytes, "file", "picture.jpg");
+
+        var response = await client.PostAsync("/api/uploads/images", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Upload_ReturnsBadRequest_WhenNoFileIsProvided()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+
+        var response = await client.PostAsync(
+            "/api/uploads/images", new MultipartFormDataContent());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Upload_ReturnsUnauthorized_WhenNoTokenIsProvided()
+    {
+        var response = await factory.CreateClient()
+            .PostAsync("/api/uploads/images", ImageContent());
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Upload_ReturnsForbidden_WhenUserIsNotAnOrganizer()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.ParticipantEmail);
+
+        var response = await client.PostAsync("/api/uploads/images", ImageContent());
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_PersistsImageUrl_AndDetailReturnsIt()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+        const string url = "/media/events/abc.webp";
+        var newEvent = NewEvent("Details with Image", image: url);
+        var created = await client.PostAsJsonAsync("/api/events", newEvent);
+        created.EnsureSuccessStatusCode();
+        var body = await created.Content.ReadAsStringAsync();
+        Assert.True(created.IsSuccessStatusCode, body);
+        var detailsResponse = await client.GetAsync(created.Headers.Location);
+        var detailsBody = await detailsResponse.Content.ReadAsStringAsync();
+        Assert.Contains(url, detailsBody);
+        var detail = await client.GetFromJsonAsync<EventDetail>(created.Headers.Location);
+
+        Assert.Equal(url, detail!.EventImageUrl);
+    }
+
+    [Fact]
+    public async Task GetAll_IncludesImageUrl()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+        var title = $"List of pictures {Guid.NewGuid():N}";
+        const string url = "/media/events/def.webp";
+
+        var created = await client.PostAsJsonAsync(
+            "/api/events", NewEvent(title, image: url));
+
+        created.EnsureSuccessStatusCode();
+
+        var all = await client.GetFromJsonAsync<List<EventSummary>>("/api/events");
+        var mine = all!.Single(e => e.Title == title);
+
+        Assert.Equal(url, mine.ImageUrl);
+    }
+
+    [Fact]
+    public async Task Create_ReturnsBadRequest_WhenImageUrlIsExternal()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+        var newEvent = NewEvent("External Image", image: "https://example.com/tracker.gif");
+
+        var response = await client.PostAsJsonAsync("/api/events", newEvent);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.True(response.StatusCode == HttpStatusCode.BadRequest, body);
+    }
+
+    [Fact]
+    public async Task Create_StoresNull_WhenImageUrlIsEmpty()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+        var newEvent = NewEvent("Empty Image", image: "");
+
+        var created = await client.PostAsJsonAsync("/api/events", newEvent);
+        var body = await created.Content.ReadAsStringAsync();
+        Assert.True(created.IsSuccessStatusCode, body);
+
+        var detail = await client.GetFromJsonAsync<EventDetail>(created.Headers.Location);
+
+        Assert.Null(detail!.EventImageUrl);
+    }
+
+    [Fact]
+    public async Task Update_ClearsImageUrl_WhenNullIsSent()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+        const string url = "/media/events/abc.webp";
+
+        var created = await client.PostAsJsonAsync("/api/events", NewEvent("Clear Image", image: url));
+        var createBody = await created.Content.ReadAsStringAsync();
+        Assert.True(created.IsSuccessStatusCode, createBody);
+
+        var updated = await client.PutAsJsonAsync(created.Headers.Location, NewEvent("Clear Image", image: null));
+        var updateBody = await updated.Content.ReadAsStringAsync();
+        Assert.True(updated.IsSuccessStatusCode, updateBody);
+
+        var detail = await client.GetFromJsonAsync<EventDetail>(created.Headers.Location);
+
+        Assert.Null(detail!.EventImageUrl);
     }
 }
