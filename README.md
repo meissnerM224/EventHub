@@ -4,19 +4,30 @@ Backend for an event/meetup platform. Users create events, sign up for them with
 limited number of seats, and search and filter events.
 
 A learning project for backend architecture: layering, dependency injection, the
-repository pattern, auth, concurrency, caching. Goals, scope and the phase plan live in
-`projekt-kontext.md`, the history in the `session-*.md` documents.
+repository pattern, auth, concurrency, caching.
+
+![scalar-overview.png](scalar-overview.png)
 
 ## Tech stack
 
-| Area | Choice |
-|---|---|
-| Language/framework | C#, ASP.NET Core |
-| Database | PostgreSQL 17 |
-| ORM | Entity Framework Core |
-| Cache | Redis 7 |
-| Auth | JWT + ASP.NET Identity |
-| Tests | xUnit + Testcontainers |
+| Area               | Choice                 |
+|--------------------|------------------------|
+| Language/framework | C#, ASP.NET Core       |
+| Database           | PostgreSQL 17          |
+| ORM                | Entity Framework Core  |
+| Cache              | Redis 7                |
+| Auth               | JWT + ASP.NET Identity |
+| Tests              | xUnit + Testcontainers |
+
+```mermaid
+flowchart LR
+    Client["Client"] -->|"JWT bearer"| Api["ASP.NET Core API<br/>controllers"]
+    Api --> Svc["Domain services<br/>business rules"]
+    Svc -->|"1. cache hit?"| Redis[("Redis 7")]
+    Svc -->|"2. on miss"| Repo["Repositories<br/>EF Core"]
+    Repo --> Db[("PostgreSQL 17")]
+    Repo -.->|"cache result"| Redis
+```
 
 ## Prerequisites
 
@@ -139,18 +150,21 @@ nothing that ever leaves a test process.
 
 ## Endpoints
 
-| Method | Path | Access |
-|---|---|---|
-| `POST` | `/api/auth/register` | anonymous |
-| `POST` | `/api/auth/login` | anonymous |
-| `GET` | `/api/events` | anonymous |
-| `GET` | `/api/events/{id}` | anonymous |
-| `POST` | `/api/events` | Organizer |
-| `PUT` | `/api/events/{id}` | the event's organizer |
-| `DELETE` | `/api/events/{id}` | the event's organizer |
-| `POST` | `/api/events/{id}/bookings` | authenticated |
-| `DELETE` | `/api/events/{id}/bookings/me` | authenticated |
-| `GET` | `/api/events/{id}/bookings` | the event's organizer |
+![scalar-event-booking.png](scalar-event-booking.png)
+
+| Method   | Path                           | Access                |
+|----------|--------------------------------|-----------------------|
+| `POST`   | `/api/auth/register`           | anonymous             |
+| `POST`   | `/api/auth/login`              | anonymous             |
+| `GET`    | `/api/events`                  | anonymous             |
+| `GET`    | `/api/events/{id}`             | anonymous             |
+| `POST`   | `/api/events`                  | Organizer             |
+| `PUT`    | `/api/events/{id}`             | the event's organizer |
+| `DELETE` | `/api/events/{id}`             | the event's organizer |
+| `POST`   | `/api/uploads/images`          | the events organizer  |
+| `POST`   | `/api/events/{id}/bookings`    | authenticated         |
+| `DELETE` | `/api/events/{id}/bookings/me` | authenticated         |
+| `GET`    | `/api/events/{id}/bookings`    | the event's organizer |
 
 `GET /api/events` takes optional query parameters:
 `?categoryId=1&location=kassel&from=2026-10-01T00:00:00Z&to=2026-10-31T00:00:00Z`
@@ -181,11 +195,11 @@ a warm-up run are the numbers that mean something.
 
 Measured with roughly 500 events, locally, requests one after another:
 
-| | without cache | with Redis |
-|---|---|---|
-| Median | 10.1 ms | 3.8 ms |
-| p95 | 20.2 ms | 5.2 ms |
-| Max | 25.6 ms | 6.9 ms |
+|        | without cache | with Redis |
+|--------|---------------|------------|
+| Median | 10.1 ms       | 3.8 ms     |
+| p95    | 20.2 ms       | 5.2 ms     |
+| Max    | 25.6 ms       | 6.9 ms     |
 
 The median drops by a factor of three, the p95 by a factor of four. So response times do
 not just get faster, they get steadier – Redis hands back a ready-made string from
@@ -204,6 +218,14 @@ EventHub/
 │   └── EventHub.Api/             → Domain + Infrastructure
 └── tests/
     └── EventHub.Api.Tests/       → Api (Domain/Infrastructure transitively)
+```
+
+```mermaid
+flowchart RL
+    Api["EventHub.Api<br/>controllers, composition root"] --> Domain["EventHub.Domain<br/>entities, interfaces, rules"]
+    Infra["EventHub.Infrastructure<br/>EF Core, Redis, Identity"] --> Domain
+    Api --> Infra
+    Tests["EventHub.Api.Tests<br/>xUnit, Testcontainers"] --> Api
 ```
 
 **Dependencies point inwards, never outwards.** Domain holds the entities, interfaces,
