@@ -27,7 +27,6 @@ services:
     restart: unless-stopped
   
   migrate:
-    build: .
     image: ghcr.io/meissnerm224/eventhub:latest
     entrypoint: [ "dotnet", "EventHub.Api.dll", "--migrate-only" ]
     environment:
@@ -65,7 +64,7 @@ services:
       Jwt__Audience: EventHub
       Storage__Endpoint: "http://storage:9000"
       Storage__AccessKey: ${MINIO_ROOT_USER}
-      Storage_SecreteKey: ${MINIO_ROOT_PASSWORD}
+      Storage__SecretKey: ${MINIO_ROOT_PASSWORD}
     depends_on:
       migrate:
         condition: service_completed_successfully

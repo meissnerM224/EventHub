@@ -1,5 +1,8 @@
 # EventHub
 
+[![CI](https://github.com/meissnerM224/EventHub/actions/workflows/ci.yaml/badge.svg)](https://github.com/meissnerM224/EventHub/actions/workflows/ci.yaml)
+[![Release](https://github.com/meissnerM224/EventHub/actions/workflows/release.yaml/badge.svg)](https://github.com/meissnerM224/EventHub/actions/workflows/release.yaml)
+
 Backend for an event/meetup platform. Users create events, sign up for them with a
 limited number of seats, and search and filter events.
 
@@ -10,26 +13,95 @@ repository pattern, auth, concurrency, caching.
 
 ## Tech stack
 
-| Area               | Choice                 |
-|--------------------|------------------------|
-| Language/framework | C#, ASP.NET Core       |
-| Database           | PostgreSQL 17          |
-| ORM                | Entity Framework Core  |
-| Cache              | Redis 7                |
-| Auth               | JWT + ASP.NET Identity |
-| Tests              | xUnit + Testcontainers |
+| Area               | Choice                                  |
+|--------------------|-----------------------------------------|
+| Language/framework | C#, ASP.NET Core                        |
+| Database           | PostgreSQL 17                           |
+| ORM                | Entity Framework Core                   |
+| Cache              | Redis 7                                 |
+| Object storage     | MinIO (S3-compatible), for event images |
+| Auth               | JWT + ASP.NET Identity                  |
+| Tests              | xUnit + Testcontainers                  |
+| CI/CD              | GitHub Actions, image published to GHCR |
+| Deployment         | Docker Compose behind Caddy             |
 
 ```mermaid
 flowchart LR
-    Client["Client"] -->|"JWT bearer"| Api["ASP.NET Core API<br/>controllers"]
+    Client["Client"] -->|" HTTPS "| Proxy["Caddy<br/>reverse proxy"]
+    Proxy --> Api["ASP.NET Core API<br/>controllers"]
     Api --> Svc["Domain services<br/>business rules"]
-    Svc -->|"1. cache hit?"| Redis[("Redis 7")]
-    Svc -->|"2. on miss"| Repo["Repositories<br/>EF Core"]
+    Svc -->|" 1. cache hit? "| Redis[("Redis 7")]
+    Svc -->|" 2. on miss "| Repo["Repositories<br/>EF Core"]
     Repo --> Db[("PostgreSQL 17")]
-    Repo -.->|"cache result"| Redis
+    Repo -.->|" cache result "| Redis
+    Proxy -->|" /media/* "| Minio[("MinIO<br/>object storage")]
+    Api -->|" uploads "| Minio
 ```
 
-## Prerequisites
+## Quickstart
+
+Runs the published image from GHCR. No .NET SDK required, only Docker.
+
+```bash
+cp .env.example .env    # fill in the values
+docker compose up -d
+```
+
+Compose starts PostgreSQL, Redis and MinIO, applies the migrations in a one-shot
+`migrate` container, creates the `media` bucket and only then starts the API behind
+Caddy.
+
+|                   | URL                       |
+|-------------------|---------------------------|
+| API               | `http://localhost/api`    |
+| API documentation | `http://localhost/scalar` |
+
+See [`.env.example`](.env.example) for the variables that have to be set. Compose
+refuses to start if one of them is missing.
+
+```bash
+docker compose down      # stop
+docker compose down -v   # stop and drop database and uploaded images
+```
+
+### Compose files
+
+`compose.yaml` is the deployment setup: every service pulls the published image from
+GHCR, and only Caddy exposes ports. `compose.override.yaml` is picked up automatically
+and adapts that for development — it builds the image from source as
+`eventhub-api:local` and publishes Postgres, Redis and MinIO on their default ports so
+you can reach them from the host.
+
+To run exactly what CI produced, skip the override:
+
+```bash
+docker compose -f compose.yaml up -d
+```
+
+### Routing
+
+Caddy terminates every request and splits them in two:
+
+| Path            | Goes to                                                                         |
+|-----------------|---------------------------------------------------------------------------------|
+| `/media/*`      | MinIO directly — event images are served as static files, never through the API |
+| everything else | the API on port 8080, including `/scalar`                                       |
+
+The `media/events` prefix is public read, so image URLs work in a browser without a
+token. Uploading still requires an organizer token via `POST /api/uploads/images`.
+
+Uploaded images pass through ImageSharp before they reach storage: the decoder itself rejects anything that is not a
+real image, the picture is scaled down to at most 1600 px and re-encoded as WebP. The format therefore never depends on
+what the client sent. The API stores the relative path (/media/events/<guid>.webp), never an absolute URL - the same
+record works behind any host name.
+
+Talking plain HTTP behind the proxy is deliberate: that traffic never leaves the Compose network.
+
+## Develop locally
+
+Run the dependencies in containers and the API from the SDK.
+
+### Prerequisites
 
 - .NET SDK (see `global.json` or `TargetFramework` in the `.csproj` files)
 - Docker – required for the tests too, not just for local development
@@ -45,26 +117,10 @@ On Linux the tool lands in `~/.dotnet/tools`, which is not on the PATH by defaul
 export PATH="$PATH:$HOME/.dotnet/tools"
 ```
 
-## Setup
-
-### 1. Start the containers
+### 1. Start the dependencies
 
 ```bash
-docker run -d --name eventhub-db \
-    -e POSTGRES_PASSWORD=dev \
-    -e POSTGRES_DB=eventhub \
-    -p 5432:5432 \
-    postgres:17
-
-docker run -d --name eventhub-redis \
-    -p 6379:6379 \
-    redis:7-alpine
-```
-
-After that, this is enough:
-
-```bash
-docker start eventhub-db eventhub-redis
+docker compose up -d db cache storage storage-init
 ```
 
 ### 2. Set the user secrets
@@ -78,16 +134,22 @@ cd src/EventHub.Api
 dotnet user-secrets set "ConnectionStrings:Default" \
     "Host=localhost;Port=5432;Database=eventhub;Username=postgres;Password=dev"
 dotnet user-secrets set "Jwt:Key" "$(openssl rand -base64 48)"
+dotnet user-secrets set "Storage:Endpoint" "http://localhost:9000"
+dotnet user-secrets set "Storage:AccessKey" "<MINIO_ROOT_USER from .env>"
+dotnet user-secrets set "Storage:SecretKey" "<MINIO_ROOT_PASSWORD from .env>"
 
 dotnet user-secrets list
 ```
 
-Both keys are required; the app throws on startup if either is missing. Everything else
-lives in `appsettings.json`, because none of it is secret: `ConnectionStrings:Redis` plus
-`Jwt:Issuer`, `Jwt:Audience` and `Jwt:ExpiryMinutes`.
+The database and JWT keys are required; the app throws on startup if either is missing. The storage keys are only needed
+for image uploads. Storage:Endpoint points at localhost because the override publishes MinIO's ports — inside Compose
+the same value is http://storage:9000.
 
-`ConnectionStrings:Default` stays in `appsettings.json` as an empty entry so the
-repository still documents which keys the app expects.
+Everything else lives in appsettings.json, because none of it is secret: ConnectionStrings:Redis plus Jwt:Issuer, Jwt:
+Audience and Jwt:ExpiryMinutes.
+
+ConnectionStrings:Default stays in appsettings.json as an empty entry so the repository still documents which keys the
+app expects.
 
 ### 3. Set up the database
 
@@ -128,9 +190,22 @@ dotnet ef migrations remove --project src/EventHub.Infrastructure --startup-proj
 dotnet ef migrations script --project src/EventHub.Infrastructure --startup-project src/EventHub.Api
 ```
 
+In the Compose setup the same migrations run automatically in the `migrate` container
+before the API starts.
+
 **Rule:** applied migrations are never edited, only superseded by new ones. Before
 applying, read the generated file – indexes, nullability and delete behaviour reveal how
 EF understood the fluent API chain.
+
+## CI
+
+Every pull request against `main` and `develop` has to pass four gates: restore,
+`dotnet format --verify-no-changes`, a Release build with `-warnaserror`, and the full
+test suite. Formatting slips and compiler warnings fail the build, so neither reaches the
+main branch.
+
+The release workflow builds the container image and pushes it to GHCR. That is the same
+image Compose pulls, so what runs locally is what CI produced.
 
 ## Tests
 
@@ -161,15 +236,18 @@ nothing that ever leaves a test process.
 | `POST`   | `/api/events`                  | Organizer             |
 | `PUT`    | `/api/events/{id}`             | the event's organizer |
 | `DELETE` | `/api/events/{id}`             | the event's organizer |
-| `POST`   | `/api/uploads/images`          | the events organizer  |
+| `POST`   | `/api/uploads/images`          | the event's organizer |
 | `POST`   | `/api/events/{id}/bookings`    | authenticated         |
 | `DELETE` | `/api/events/{id}/bookings/me` | authenticated         |
 | `GET`    | `/api/events/{id}/bookings`    | the event's organizer |
 
 `GET /api/events` takes optional query parameters:
-`?categoryId=1&location=kassel&from=2026-10-01T00:00:00Z&to=2026-10-31T00:00:00Z`
+`?categoryId=1&location=berlin&from=2026-10-01T00:00:00Z&to=2026-10-31T00:00:00Z`
 
 ### Example
+
+Against the SDK run on port 5000. In the Compose setup, replace the base URL with
+`http://localhost`.
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
@@ -248,3 +326,7 @@ The key stays the same, the source changes. Later sources override earlier ones:
 
 Driven by `ASPNETCORE_ENVIRONMENT`. No `if` in the code, no separate keys for dev and
 prod.
+
+## Next up
+
+A React frontend on top of the API, and deployment to a Raspberry Pi in my home network.
