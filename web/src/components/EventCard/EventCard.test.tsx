@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import EventCard from "./EventCard";
+import EventCard, { type EventCardProps } from "./EventCard";
 
-const defaults = {
+const defaults: EventCardProps = {
   id: "c7432f4a-5a21-4f64-ad51-eac9860e11e9",
   title: "Sommerfest im Park",
   location: "Kassel",
@@ -13,7 +13,7 @@ const defaults = {
   imageUrl: null,
 };
 
-function renderCard(overrides: Partial<typeof defaults> = {}) {
+function renderCard(overrides: Partial<EventCardProps> = {}) {
   return render(
     <MemoryRouter>
       <EventCard {...defaults} {...overrides} />

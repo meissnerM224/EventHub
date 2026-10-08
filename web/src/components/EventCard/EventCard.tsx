@@ -2,7 +2,7 @@ import styles from "./EventCard.module.css";
 import { formatDate } from "../../lib/format.ts";
 import { Link } from "react-router-dom";
 
-type EventCardProps = {
+export type EventCardProps = {
   id: string;
   title: string;
   location: string;
