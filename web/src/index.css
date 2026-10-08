@@ -1,1 +1,27 @@
-@import './styles/tokens.css';
+@import "./styles/tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family:
+    system-ui,
+    -apple-syste,
+    "Sego UI",
+    sans-serif;
+  line-height: 1;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+/*h1, h2, h3, h4, p {*/
+/*  margin: 0;*/
+/*}*/

@@ -1,0 +1,13 @@
+.footer {
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+  margin-top: var(--sp-12);
+}
+
+.inner {
+  max-width: var(--w-content);
+  margin-inline: auto;
+  padding: var(--sp-3);
+  color: var(--c-ink-muted);
+  font-size: var(--fs-sm);
+}

@@ -9,8 +9,21 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": "http://localhost:5000",
-      "/media": "http://localhost:9000",
+      "/api": {
+        target: "https://localhost",
+        secure: false,
+        changeOrigin: true,
+      },
+      "/media": {
+        target: "https://localhost",
+        secure: false,
+        changeOrigin: true,
+      },
     },
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/test/setup.ts",
   },
 });

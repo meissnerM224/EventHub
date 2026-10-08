@@ -1,0 +1,23 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: var(--w-content);
+  margin-inline: auto;
+  padding-inline: var(--sp-6);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding-inline: var(--sp-4);
+  }
+}

@@ -3,23 +3,23 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'EventHub.sln'
+      - '.github/workflows/ci.yaml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'EventHub.sln'
+      - '.github/workflows/ci.yaml'
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v6
 
