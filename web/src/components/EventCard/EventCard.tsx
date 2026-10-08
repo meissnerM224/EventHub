@@ -24,7 +24,6 @@ export default function EventCard({
   return (
     <Link to={`/events/${id}`}>
       <div className={styles.container}>
-         
         {imageUrl && <img src={imageUrl} alt="" />}
         <div className={styles.body}>
           <h3>{title}</h3>
@@ -32,7 +31,7 @@ export default function EventCard({
           <p>Ort: {location}</p>
           <p> Verfügbare Plätze: {availableSpots}</p>
           <p>Kategorie: {categoryName}</p>
-          
+
           <button disabled={availableSpots <= 0}>
             {availableSpots > 0 ? "Booking now" : "Sold out"}
           </button>
