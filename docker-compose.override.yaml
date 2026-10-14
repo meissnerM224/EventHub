@@ -4,7 +4,7 @@ services:
   cache:
     ports: [ "6379:6379" ]
   storage:
-    ports: [ "9000:9000", "9001:9001" ]
+    ports: ["3900:3900", "3902:3902", "3903:3903"]
   migrate:
     build: .
     image: eventhub-api:local

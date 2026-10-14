@@ -7,9 +7,8 @@ using EventHub.Domain.Authorization;
 using EventHub.Domain.Models;
 using EventHub.Domain.Storage;
 using Microsoft.AspNetCore.Mvc;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
+
 
 namespace EventHub.Api.Tests;
 
@@ -36,11 +35,12 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 
     private static MultipartFormDataContent ImageContent()
     {
-        using var image = new Image<Rgba32>(40, 30);
-        using var ms = new MemoryStream();
-        image.Save(ms, new PngEncoder());
+        using var bitmap = new SKBitmap(40, 30);
 
-        var file = new ByteArrayContent(ms.ToArray());
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+
+        var file = new ByteArrayContent(data.ToArray());
         file.Headers.ContentType = new("image/png")
         {
             CharSet = null
