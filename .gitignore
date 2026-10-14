@@ -289,6 +289,9 @@ FakesAssemblies/
 # GhostDoc plugin setting file
 *.GhostDoc.xml
 
+# Garage Storage settings
+garage/garage.toml
+
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
 node_modules/

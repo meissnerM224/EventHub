@@ -1,6 +1,9 @@
 localhost {
-    handle /media/* {
-        reverse_proxy storage:9000
+    handle_path /media/* {
+        rewrite * {path}
+        reverse_proxy storage:3902 {
+            header_up Host media.web.garage.localhost
+        }
     }
 
     handle /api/* {

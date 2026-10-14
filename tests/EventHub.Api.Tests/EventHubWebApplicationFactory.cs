@@ -1,6 +1,8 @@
+using DotNet.Testcontainers.Containers;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Amazon.S3;
+using DotNet.Testcontainers.Builders;
 using EventHub.Api.Tests.Fakes;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Interfaces;
@@ -16,7 +18,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Testcontainers.Minio;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
@@ -26,9 +27,11 @@ namespace EventHub.Api.Tests;
 public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string TestJwtKey = "test-key-only-for-integration-tests-do-not-use-elsewhere";
-    private const string MiniIoUser = "testuser";
     public const string TestPassword = "Test1234!";
-
+    private const string GarageImage = "dxflrs/garage:ddb90621c1e7e9d98cf0b4088802f31cac57587b";
+    private const string TestAccessKey = "GKtest00000000000000test";
+    private const string TestSecretKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    private const string RpcSecret = "0000000000000000000000000000000000000000000000000000000000000001";
     public const string OrganizerEmail = "organizer@test.com";
     public const string OtherOrganizerEmail = "other-organizer@test.com";
     public const string ParticipantEmail = "participant@test.com";
@@ -42,9 +45,14 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
-    private readonly MinioContainer _minio = new MinioBuilder("quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z")
-        .WithUsername(MiniIoUser)
-        .WithPassword(TestPassword)
+    private readonly IContainer _garage = new ContainerBuilder(GarageImage)
+        .WithEnvironment("GARAGE_RPC_SECRET", RpcSecret)
+        .WithResourceMapping(
+            new FileInfo(Path.Combine(Directory.GetCurrentDirectory(), "garage.toml")),
+            "/etc/")
+        .WithPortBinding(3900, true)
+        .WithWaitStrategy(Wait.ForUnixContainer()
+            .UntilMessageIsLogged("S3 API server listening"))
         .Build();
 
     private Dictionary<string, string> _environment = [];
@@ -66,7 +74,18 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync(), _minio.StartAsync());
+        await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync(), _garage.StartAsync());
+        var status = await Garage("status");
+        var nodeId = status.Split('\n')
+            .First(l => l.Contains("NO ROLE ASSIGNED"))
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+
+        await Garage("layout", "assign", "-z", "dc1", "-c", "1G", nodeId);
+        await Garage("layout", "apply", "--version", "1");
+        await Garage("bucket", "create", ImagePath.Bucket);
+        await Garage("key", "import", "--yes", TestAccessKey, TestSecretKey, "-n", "test");
+        await Garage("bucket", "allow", "--read", "--write", ImagePath.Bucket, "--key", TestAccessKey);
+
         _environment = new Dictionary<string, string>
         {
             ["ConnectionStrings__Default"] = _postgres.GetConnectionString(),
@@ -74,19 +93,20 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             ["Jwt__Key"] = TestJwtKey,
             ["Jwt__Issuer"] = "EventHub.Tests",
             ["Jwt__Audience"] = "EventHub.Tests",
-            ["Storage__Endpoint"] = _minio.GetConnectionString(),
-            ["Storage__AccessKey"] = MiniIoUser,
-            ["Storage__SecretKey"] = TestPassword,
+            ["Storage__Endpoint"] = $"http://{_garage.Hostname}:{_garage.GetMappedPublicPort(3900)}",
+            ["Storage__AccessKey"] = TestAccessKey,
+            ["Storage__SecretKey"] = TestSecretKey,
             ["Outbox__PollIntervalMs"] = "200",
             ["Storage__Bucket"] = ImagePath.Bucket,
         };
+        var endpoint = $"http://{_garage.Hostname}:{_garage.GetMappedPublicPort(3900)}";
         foreach (var (key, value) in _environment) Environment.SetEnvironmentVariable(key, value);
-        S3 = new AmazonS3Client(MiniIoUser, TestPassword, new AmazonS3Config
+        S3 = new AmazonS3Client(TestAccessKey, TestSecretKey, new AmazonS3Config
         {
-            ServiceURL = _minio.GetConnectionString(),
-            ForcePathStyle = true
+            ServiceURL = endpoint,
+            ForcePathStyle = true,
+            AuthenticationRegion = "garage"
         });
-        await S3.PutBucketAsync(ImagePath.Bucket);
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EventHubDbContext>();
         await db.Database.MigrateAsync();
@@ -97,7 +117,14 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
         await CreateUserAsync(manager, Guid.NewGuid(), ParticipantEmail, "Test", RoleName.Participant);
     }
 
+    async Task<string> Garage(params string[] args)
+    {
+        var result = await _garage.ExecAsync(["/garage", .. args]);
 
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException($"garage {string.Join(' ', args)}: {result.Stderr}");
+        return result.Stdout;
+    }
     private static async Task CreateUserAsync(
         UserManager<AppUser> userManager,
         Guid id, string email, string displayName, string role)
@@ -140,7 +167,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
         foreach (var key in _environment.Keys) Environment.SetEnvironmentVariable(key, null);
         await _postgres.DisposeAsync();
         await _redis.DisposeAsync();
-        await _minio.DisposeAsync();
+        await _garage.DisposeAsync();
         await base.DisposeAsync();
     }
 }

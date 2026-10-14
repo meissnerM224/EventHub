@@ -130,7 +130,8 @@ try
         return new AmazonS3Client(o.AccessKey, o.SecretKey, new AmazonS3Config
         {
             ServiceURL = o.Endpoint,
-            ForcePathStyle = true
+            ForcePathStyle = true,
+            AuthenticationRegion = "garage"
         });
     });
 
@@ -168,9 +169,8 @@ try
     {
         app.UseHttpsRedirection();
         app.MapOpenApi();
-        app.MapScalarApiReference();
     }
-
+    app.MapScalarApiReference();
     app.UseHttpsRedirection();
     app.UseAuthentication();
     app.UseAuthorization();

@@ -1,23 +1,22 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import path from "node:path";
+import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { "@": path.resolve(__dirname, "src") },
+    alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },
   server: {
     proxy: {
       "/api": {
         target: "https://localhost",
         secure: false,
-        changeOrigin: true,
       },
       "/media": {
-        target: "https://localhost",
-        secure: false,
-        changeOrigin: true,
+        target: "http://localhost:3902",
+        rewrite: (path) => path.replace(/^\/media/, ""),
+        headers: { Host: "media.web.garage.localhost" },
       },
     },
   },

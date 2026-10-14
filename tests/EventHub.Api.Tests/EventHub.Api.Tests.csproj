@@ -31,5 +31,10 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\EventHub.Api\EventHub.Api.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <None Update="garage.toml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
 </Project>
