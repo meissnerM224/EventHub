@@ -1,7 +1,8 @@
 # EventHub
 
-[![CI](https://github.com/meissnerM224/EventHub/actions/workflows/ci.yaml/badge.svg)](https://github.com/meissnerM224/EventHub/actions/workflows/ci.yaml)
-[![Release](https://github.com/meissnerM224/EventHub/actions/workflows/release.yaml/badge.svg)](https://github.com/meissnerM224/EventHub/actions/workflows/release.yaml)
+[![CI](https://github.com/meissnerM224/EventHub/actions/workflows/ci.yaml/badge.svg?branch=develop)](https://github.com/meissnerM224/EventHub/actions/workflows/ci.yaml)
+[![Web](https://github.com/meissnerM224/EventHub/actions/workflows/web.yaml/badge.svg?branch=develop)](https://github.com/meissnerM224/EventHub/actions/workflows/web.yaml)
+[![Release](https://github.com/meissnerM224/EventHub/actions/workflows/release.yaml/badge.svg?branch=main)](https://github.com/meissnerM224/EventHub/actions/workflows/release.yaml)
 
 Backend for an event/meetup platform. Users create events, sign up for them with a
 limited number of seats, and search and filter events.
