@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+cookies.txt
 
 # User-specific files
 *.rsuser

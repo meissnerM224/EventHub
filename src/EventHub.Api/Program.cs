@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using Amazon.S3;
+using EventHub.Api.Authentication;
 using EventHub.Api.ErrorHandling;
 using EventHub.Api.Extensions;
 using EventHub.Api.Logging;
@@ -36,7 +37,7 @@ try
         .ReadFrom.Services(services).Enrich.FromLogContext()
         .Enrich.With<ActivityEnricher>()
         .Destructure.ToMaximumDepth(3));
-
+    builder.WebHost.ConfigureKestrel(o => o.AddServerHeader = false);
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();
     var connection = builder.Configuration.GetConnectionString("Default");
@@ -94,6 +95,21 @@ try
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.FromSeconds(30)
+            };
+
+            options.Events = new JwtBearerEvents()
+            {
+                OnMessageReceived = context =>
+                {
+                    if (!context.Request.Headers.ContainsKey("Authorization") &&
+                        context.Request.Cookies.TryGetValue(AuthCookie.Name, out var token))
+                    {
+                        context.Token = token;
+                    }
+
+                    return Task.CompletedTask;
+                }
+
             };
         });
     var redisConnection = builder.Configuration.GetConnectionString("Redis");

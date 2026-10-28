@@ -1,6 +1,9 @@
+using EventHub.Api.Authentication;
+using EventHub.Api.Extensions;
 using EventHub.Api.Models;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Controllers;
@@ -10,19 +13,44 @@ namespace EventHub.Api.Controllers;
 public class AuthenticationController(IAuthService service) : ControllerBase
 {
     [HttpPost("register")]
-    [ProducesResponseType<AuthResult>(StatusCodes.Status201Created)]
+    [ProducesResponseType<AuthResult>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResult>> Register([FromBody] RegisterUser body)
     {
-        return Ok(await service.RegisterAsync(body.Email, body.Password, body.DisplayName, body.Role));
+        var result = await service.RegisterAsync(body.Email, body.Password, body.DisplayName, body.Role);
+        return Ok(SignIn(result));
     }
 
     [HttpPost("login")]
     [ProducesResponseType<AuthResult>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<AuthResult>> Login([FromBody] LoginUser body)
+    public async Task<ActionResult<CurrentUser>> Login([FromBody] LoginUser body)
     {
-        return Ok(await service.LoginAsync(body.Email, body.Password));
+        var result = await service.LoginAsync(body.Email, body.Password);
+        return Ok(SignIn(result));
+    }
+    
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete(AuthCookie.Name, AuthCookie.Options());
+        return NoContent();
+    }
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<CurrentUser> Me() => User.ToCurrentUser();
+
+    private CurrentUser SignIn(AuthResult result)
+    {
+        Response.Cookies.Append(AuthCookie.Name, result.AccessToken, AuthCookie.Options(result.ExpiresAt));
+        return new CurrentUser
+        {
+            UserId = result.UserId,
+            DisplayName = result.DisplayName,
+            Roles = [.. result.Roles],
+            ExpiresAt = result.ExpiresAt,
+        };
     }
 }

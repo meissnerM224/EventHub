@@ -1,5 +1,4 @@
 using DotNet.Testcontainers.Containers;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Amazon.S3;
 using DotNet.Testcontainers.Builders;
@@ -55,6 +54,13 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             .UntilMessageIsLogged("S3 API server listening"))
         .Build();
 
+    public HttpClient CreateHttpsClient(bool handleCookies = true) =>
+        CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            HandleCookies =  handleCookies,
+        });
+    
     private Dictionary<string, string> _environment = [];
     public IAmazonS3 S3 { get; private set; } = null!;
 
@@ -149,15 +155,11 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     public async Task<HttpClient> CreateAuthenticatedClientAsync(string email)
     {
-        var client = CreateClient();
+        var client = CreateHttpsClient();
 
         var response = await client.PostAsJsonAsync("/api/auth/login",
             new { Email = email, Password = TestPassword });
         response.EnsureSuccessStatusCode();
-
-        var auth = await response.Content.ReadFromJsonAsync<AuthResult>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
 
         return client;
     }
