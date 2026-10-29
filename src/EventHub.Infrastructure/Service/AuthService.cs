@@ -12,13 +12,8 @@ public class AuthService(
     UserManager<AppUser> userManager,
     IJwtTokenGenerator tokenGenerator) : IAuthService
 {
-    public async Task<AuthResult> RegisterAsync(string email, string password, string displayName, string role)
+    public async Task<AuthResult> RegisterAsync(string email, string password, string displayName)
     {
-        if (role is not RoleName.Organizer && role is not RoleName.Participant)
-        {
-            throw new BusinessRuleException($"Unbekannte Rolle '{role}'.");
-        }
-
         if (await userManager.FindByEmailAsync(email) is not null)
         {
             throw new AlreadyExistException($"{email} is already registered.");
@@ -38,8 +33,8 @@ public class AuthService(
             throw new BusinessRuleException(string.Join(" ", result.Errors.Select(e => e.Description)));
         }
 
-        await userManager.AddToRoleAsync(user, role);
-        return BuildResult(user, [role]);
+        await userManager.AddToRoleAsync(user, RoleName.Participant);
+        return BuildResult(user, [RoleName.Participant]);
     }
 
     public async Task<AuthResult> LoginAsync(string email, string password)
@@ -66,4 +61,5 @@ public class AuthService(
             Roles = roles
         };
     }
+
 }

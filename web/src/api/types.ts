@@ -28,5 +28,13 @@ export const eventDetailSchema = z.object({
   isCancelled: z.boolean(),
 });
 
+export const currentUserSchema = z.object({
+  userId: z.string(),
+  displayName: z.string(),
+  roles: z.array(z.string()),
+  expiresAt: z.string(),
+});
+
 export type EventSummary = z.infer<typeof eventSummarySchema>;
 export type EventDetail = z.infer<typeof eventDetailSchema>;
+export type CurrentUser = z.infer<typeof currentUserSchema>;

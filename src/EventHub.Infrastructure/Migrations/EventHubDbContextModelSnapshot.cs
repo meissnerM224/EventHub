@@ -299,6 +299,13 @@ namespace EventHub.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
+                            Id = new Guid("5b0f2c3e-8d41-4a7b-9e6c-2f1d8a4b7c90"),
+                            ConcurrencyStamp = "a3c1e7f2-6b54-4d89-8e0a-1f9b2c7d4e65",
+                            Name = "Administrator",
+                            NormalizedName = "ADMINISTRATOR"
+                        },
+                        new
+                        {
                             Id = new Guid("8f2a1c40-1f3d-4c9a-9b7e-2a0d5c1e7a01"),
                             ConcurrencyStamp = "8f2a1c40-1f3d-4c9a-9b7e-2a0d5c1e7a01",
                             Name = "Organizer",

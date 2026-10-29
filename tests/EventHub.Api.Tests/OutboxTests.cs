@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Messaging;
@@ -105,7 +104,7 @@ public sealed class OutboxTests(EventHubWebApplicationFactory factory)
 
     private async Task<HttpClient> CreateParticipantClientAsync()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateHttpsClient();
         var response = await client.PostAsJsonAsync("/api/auth/register", new
         {
             Email = $"outbox-{Guid.NewGuid():N}@test.de",
@@ -114,10 +113,6 @@ public sealed class OutboxTests(EventHubWebApplicationFactory factory)
             Role = RoleName.Participant
         });
         response.EnsureSuccessStatusCode();
-
-        var auth = await response.Content.ReadFromJsonAsync<AuthResult>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
         return client;
     }
 
