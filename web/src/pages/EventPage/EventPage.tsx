@@ -1,10 +1,10 @@
-import styles from "../components/EventCard/EventCard.module.css";
-import EmptyState from "../components/EmptyState/EmptyState";
-import EventCard from "../components/EventCard/EventCard";
+import styles from "./EventPage.module.css";
+import EmptyState from "../../components/EmptyState/EmptyState";
+import EventCard from "../../components/EventCard/EventCard";
 import { useQuery } from "@tanstack/react-query";
-import { getEvents } from "../api/events";
-import Spinner from "../components/Spinner/Spinner.tsx";
-import ErrorMessage from "../components/ErrorMessage/ErrorMessage.tsx";
+import { getEvents } from "../../api/events";
+import Spinner from "../../components/Spinner/Spinner.tsx";
+import ErrorMessage from "../../components/ErrorMessage/ErrorMessage.tsx";
 import { useIntl } from "react-intl";
 export default function EventPage() {
   // Logic
@@ -22,7 +22,7 @@ export default function EventPage() {
 
   // Component
   if (isPending || isFetching)
-    return <Spinner label={intl.formatMessage({ id: "project.loading" })} />;
+    return <Spinner label={intl.formatMessage({ id: "common.loading" })} />;
   if (error) return <ErrorMessage message={error.message} onRetry={refetch} />;
   if (events.length === 0)
     return (

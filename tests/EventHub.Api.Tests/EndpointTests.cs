@@ -670,5 +670,5 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 
         Assert.Null(detail!.EventImageUrl);
     }
-  
+
 }

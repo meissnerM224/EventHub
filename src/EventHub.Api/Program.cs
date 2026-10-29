@@ -48,6 +48,7 @@ try
         options.UseNpgsql(connection);
         if (builder.Environment.IsDevelopment()) options.EnableSensitiveDataLogging();
     });
+    builder.Services.AddScoped<IUserRoleService, UserRoleService>();
     builder.Services.AddScoped<IEventsRepository, EventsRepository>();
     builder.Services.AddScoped<IEventsService, EventsService>();
     builder.Services.AddScoped<IBookingsService, BookingsService>();

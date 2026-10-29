@@ -1,3 +1,39 @@
+// ------------------ CRUD ------------------ \\
+
+/// GET
+export async function apiGet<T>(
+  path: string,
+  parse: (data: unknown) => T,
+): Promise<T> {
+  return parseJson(await apiFetch(path), parse);
+}
+
+/// POST
+export async function apiPost<T>(
+  path: string,
+  data: unknown,
+  parse: (data: unknown) => T,
+): Promise<T> {
+  const response = await apiFetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return parseJson(response, parse);
+}
+
+export async function apiFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const response = await fetch(path, init);
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorMessage(response));
+  }
+  return response;
+}
+
+// ------------------ API Error ------------------ \\
 export class ApiError extends Error {
   readonly status: number;
 
@@ -5,6 +41,25 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
     this.name = "ApiError";
+  }
+}
+
+// Helper
+async function parseJson<T>(
+  response: Response,
+  parse: (data: unknown) => T,
+): Promise<T> {
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch (cause) {
+    throw new Error("Response body is not valid JSON.", { cause });
+  }
+  try {
+    return parse(data);
+  } catch (cause) {
+    console.error("Response does not fit schema", cause);
+    throw new Error("Response does not match expected schema.", { cause });
   }
 }
 
@@ -24,28 +79,4 @@ async function readErrorMessage(response: Response): Promise<string> {
     /* empty */
   }
   return fallbackMessages[response.status] ?? "unexpected error";
-}
-
-export async function apiFetch(
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  const response = await fetch(path, init);
-  if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response));
-  }
-  return response;
-}
-
-export async function apiGet<T>(
-  path: string,
-  parse: (data: unknown) => T,
-): Promise<T> {
-  const response = await apiFetch(path);
-  try {
-    return parse(await response.json());
-  } catch (cause) {
-    console.error("Response does not fit in schema", cause);
-    throw new Error("Server sent an unexpected schema.", { cause });
-  }
 }

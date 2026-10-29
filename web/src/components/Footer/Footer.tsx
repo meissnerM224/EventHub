@@ -5,7 +5,7 @@ export default function Footer() {
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
-        <p>EventHub – {intl.formatMessage({ id: "project.subtitle" })}</p>
+        <p>EventHub – {intl.formatMessage({ id: "common.subtitle" })}</p>
       </div>
     </footer>
   );

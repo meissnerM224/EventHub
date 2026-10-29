@@ -13,6 +13,4 @@ public class RegisterUser
     [Required(AllowEmptyStrings = false), MaxLength(100)]
     public required string DisplayName { get; init; }
 
-    [Required(AllowEmptyStrings = false)]
-    public required string Role { get; init; }
 }

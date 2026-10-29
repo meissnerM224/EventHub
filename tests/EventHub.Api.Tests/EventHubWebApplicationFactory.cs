@@ -38,6 +38,8 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     public const int SecondCategoryId = 2;
     public const string FirstCategoryName = "Konzert";
     private static readonly Guid OrganizerId = Guid.Parse("c1a94f60-3e28-4d7b-8f52-9b0e6a4c2d18");
+    public const string AdminEmail = "admin@test.com";
+
 
     private readonly PostgreSqlContainer _postgres =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
@@ -58,9 +60,9 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
         CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost"),
-            HandleCookies =  handleCookies,
+            HandleCookies = handleCookies,
         });
-    
+
     private Dictionary<string, string> _environment = [];
     public IAmazonS3 S3 { get; private set; } = null!;
 
@@ -80,6 +82,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
 
     public async Task InitializeAsync()
     {
+
         await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync(), _garage.StartAsync());
         var status = await Garage("status");
         var nodeId = status.Split('\n')
@@ -118,6 +121,7 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
         await db.Database.MigrateAsync();
 
         var manager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await CreateUserAsync(manager, Guid.NewGuid(), AdminEmail, "Admin", RoleName.Admin);
         await CreateUserAsync(manager, OrganizerId, OrganizerEmail, "Test Organizer", RoleName.Organizer);
         await CreateUserAsync(manager, Guid.NewGuid(), OtherOrganizerEmail, "O", RoleName.Organizer);
         await CreateUserAsync(manager, Guid.NewGuid(), ParticipantEmail, "Test", RoleName.Participant);

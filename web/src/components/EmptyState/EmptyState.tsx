@@ -2,7 +2,7 @@ import styles from "./EmptyState.module.css";
 
 type Props = {
   message: string;
-  action?: { label: string; onClick: () => void };
+  action?: { label: string; onClick: () => void; disabled?: boolean };
 };
 export default function EmptyState({ message, action }: Props) {
   return (
@@ -14,6 +14,7 @@ export default function EmptyState({ message, action }: Props) {
             type="button"
             className={styles.retry}
             onClick={action.onClick}
+            disabled={action.disabled}
           >
             {action.label}
           </button>
