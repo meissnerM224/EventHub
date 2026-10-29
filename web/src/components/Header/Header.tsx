@@ -1,7 +1,10 @@
 import { Link, NavLink } from "react-router-dom";
 import styles from "./Header.module.css";
+import { useIntl } from "react-intl";
 
 export default function Header() {
+  const intl = useIntl();
+
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -21,7 +24,7 @@ export default function Header() {
         </nav>
 
         <Link to="/login" className={styles.cta}>
-          Anmelden
+          {intl.formatMessage({ id: "login" })}
         </Link>
       </div>
     </header>
