@@ -4,6 +4,6 @@ namespace EventHub.Domain.Interfaces;
 
 public interface IAuthService
 {
-    Task<AuthResult> RegisterAsync(string email, string password, string displayName, string role);
+    Task<AuthResult> RegisterAsync(string email, string password, string displayName);
     Task<AuthResult> LoginAsync(string email, string password);
 }

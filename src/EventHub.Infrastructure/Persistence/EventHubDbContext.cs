@@ -98,6 +98,13 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
         builder.Entity<IdentityRole<Guid>>().HasData(
             new IdentityRole<Guid>
             {
+                Id = Guid.Parse("5b0f2c3e-8d41-4a7b-9e6c-2f1d8a4b7c90"),
+                Name = RoleName.Admin,
+                NormalizedName = "ADMINISTRATOR",
+                ConcurrencyStamp = "a3c1e7f2-6b54-4d89-8e0a-1f9b2c7d4e65",
+            },
+            new IdentityRole<Guid>
+            {
                 Id = Guid.Parse("8f2a1c40-1f3d-4c9a-9b7e-2a0d5c1e7a01"),
                 Name = RoleName.Organizer,
                 NormalizedName = RoleName.Organizer.ToUpperInvariant(),

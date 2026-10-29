@@ -1,0 +1,19 @@
+.container {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--sh-card);
+  overflow: hidden;
+  /*width: 380px;*/
+}
+
+.body {
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.body h3,
+.body p {
+  margin: 0;
+}

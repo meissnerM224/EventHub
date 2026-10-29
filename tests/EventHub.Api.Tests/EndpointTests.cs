@@ -18,7 +18,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
     // Helper
     private async Task<HttpClient> CreateParticipantClientAsync()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateHttpsClient();
         var response = await client.PostAsJsonAsync("/api/auth/register", new
         {
             Email = $"race-{Guid.NewGuid():N}@test.de",
@@ -27,9 +27,6 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
             Role = RoleName.Participant
         });
         response.EnsureSuccessStatusCode();
-
-        var auth = await response.Content.ReadFromJsonAsync<AuthResult>();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
         return client;
     }
 
@@ -673,4 +670,5 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 
         Assert.Null(detail!.EventImageUrl);
     }
+
 }
