@@ -2,7 +2,7 @@ import EventPage from "./pages/EventPage/EventPage";
 import EventDetailsPage from "./pages/EventDetailsPage/EventDetailsPage";
 import RequireAuth from "./components/RequireAuth/RequireAuth.tsx";
 import LoginPage from "./pages/LoginPage/LoginPage";
-import AccountLayout from "./components/Layout/AccountLayout";
+import AccountPage from "./pages/Account/AccountPage";
 import Layout from "./components/Layout/Layout";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage";
@@ -11,6 +11,7 @@ import MyBookingsPage from "./pages/Account/MyBookingsPage";
 import CreateNewEvent from "./pages/CreateNewEvent/CreateNewEvent";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Role } from "./api/auth";
 
 export default function App() {
   return (
@@ -25,18 +26,16 @@ export default function App() {
           <Route
             path="/events/new"
             element={
-              <RequireAuth>
-                <Route path="settings" element={<CreateNewEvent />} />
+              <RequireAuth role={Role.Organizer}>
+                <CreateNewEvent />
               </RequireAuth>
             }
-          >
-            {" "}
-          </Route>
+          />
           <Route
             path="/account"
             element={
               <RequireAuth>
-                <AccountLayout />
+                <AccountPage />
               </RequireAuth>
             }
           >

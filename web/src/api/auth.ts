@@ -34,11 +34,21 @@ export function register(data: Registration): Promise<CurrentUser> {
   return apiPost("/api/auth/register", data, parseUser);
 }
 
+// Must match RoleName in the backend
+export const Role = {
+  Organizer: "Organizer",
+  Admin: "Administrator",
+} as const;
+export type Role = (typeof Role)[keyof typeof Role];
+
+export const hasRole = (user: CurrentUser | null | undefined, role: Role) =>
+  user?.roles.includes(role) ?? false;
+
 export const isOrganizer = (user: CurrentUser | null | undefined) =>
-  user?.roles.includes("Organizer") ?? false;
+  hasRole(user, Role.Organizer);
 
 export const isAdmin = (user: CurrentUser | null | undefined) =>
-  user?.roles.includes("Administrator") ?? false;
+  hasRole(user, Role.Admin);
 
 // --------------- Hooks --------------- \\
 

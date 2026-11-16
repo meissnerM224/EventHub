@@ -14,6 +14,8 @@ function EventDetailsPage() {
     data: event,
     isPending,
     error,
+    isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["events", id],
     queryFn: () => getEventById(id!),
@@ -21,21 +23,25 @@ function EventDetailsPage() {
   });
 
   if (isPending) return <Spinner />;
-  if (error) return <ErrorMessage message={error.message} onRetry={() => {}} />;
+  if (error)
+    return (
+      <ErrorMessage error={error} onRetry={refetch} retrying={isFetching} />
+    );
 
   if (!event) return <p>{intl.formatMessage({ id: "event.notFound" })}</p>;
   return (
     <div className={styles.container}>
-      {event.eventImageUrl && <img src={event.eventImageUrl} alt="" />}
+      {event.eventImageUrl && (
+        <img src={event.eventImageUrl} alt="Event image" />
+      )}
       <div className={styles.body}>
         <h3>{event.eventTitle}</h3>
         <p>
-          {intl.formatMessage({ id: "project,date" })}:{" "}
-          {formatDate(event.eventStartsAt)}
+          {intl.formatMessage({ id: "common.date" })}:{" "}
+          {formatDate(event.eventStartsAt, intl.locale)}
         </p>
         <p>
-          {intl.formatMessage({ id: "project,location" })}:{" "}
-          {event.eventLocation}
+          {intl.formatMessage({ id: "common.location" })}: {event.eventLocation}
         </p>
         <p>
           {" "}

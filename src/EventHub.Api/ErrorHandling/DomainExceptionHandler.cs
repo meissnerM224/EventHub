@@ -17,23 +17,26 @@ public class DomainExceptionHandler(
 
         var (status, title) = mapped.Value;
 
-        logger.LogInformation(
-            "Request rejected: {ExceptionType} → {StatusCode}. {ExceptionMessage}",
-            exception.GetType().Name, status, exception.Message);
+        logger.LogInformation(exception, "Request rejected: {ExceptionType} → {StatusCode}",
+            exception.GetType().Name, status);
 
         httpContext.Response.StatusCode = status;
+        var problemDetails = new ProblemDetails
+        {
+            Status = status,
+            Title = title,
+            Detail = exception.Message
+        };
+        if (exception is DomainException domainException)
+            problemDetails.Extensions["code"] = domainException.Code;
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = exception,
-            ProblemDetails = new ProblemDetails
-            {
-                Status = status,
-                Title = title,
-                Detail = exception.Message
-            }
+            ProblemDetails = problemDetails
         });
+
     }
 
     private static (int Status, string Title)? Map(Exception exception) => exception switch

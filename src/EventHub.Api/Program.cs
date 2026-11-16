@@ -54,13 +54,9 @@ try
     builder.Services.AddScoped<IBookingsService, BookingsService>();
     builder.Services.AddScoped<ITransactionRunner, EfTransactionRunner>();
     builder.Services.AddScoped<IBookingRepository, BookingsRepository>();
-    builder.Services.AddSingleton<ChannelNotificationQueue>();
-    builder.Services.AddSingleton<INotificationQueue>(sp => sp.GetRequiredService<ChannelNotificationQueue>());
     builder.Services.AddScoped<INotificationQueue, OutboxNotificationQueue>();
     builder.Services.AddScoped<INotificationSender, LoggingNotificationSender>();
     builder.Services.AddHostedService<OutboxWorker>();
-    builder.Services.AddScoped<INotificationSender, LoggingNotificationSender>();
-    builder.Services.AddHostedService<NotificationWorker>();
     builder.Services.Configure<OutboxOptions>(
         builder.Configuration.GetSection(OutboxOptions.SectionName));
     builder.Services.Configure<JwtOptions>(
@@ -184,7 +180,6 @@ try
     app.UseExceptionHandler();
     if (app.Environment.IsDevelopment())
     {
-        app.UseHttpsRedirection();
         app.MapOpenApi();
     }
     app.MapScalarApiReference();

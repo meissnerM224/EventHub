@@ -7,6 +7,8 @@ import Spinner from "../../components/Spinner/Spinner.tsx";
 import ErrorMessage from "../../components/ErrorMessage/ErrorMessage.tsx";
 import { useIntl } from "react-intl";
 export default function EventPage() {
+  const intl = useIntl();
+
   // Logic
   const {
     data: events,
@@ -18,12 +20,14 @@ export default function EventPage() {
     queryKey: ["events"],
     queryFn: getEvents,
   });
-  const intl = useIntl();
 
   // Component
-  if (isPending || isFetching)
+  if (isPending)
     return <Spinner label={intl.formatMessage({ id: "common.loading" })} />;
-  if (error) return <ErrorMessage message={error.message} onRetry={refetch} />;
+  if (error)
+    return (
+      <ErrorMessage error={error} onRetry={refetch} retrying={isFetching} />
+    );
   if (events.length === 0)
     return (
       <EmptyState
@@ -38,10 +42,10 @@ export default function EventPage() {
       />
     );
   return (
-    <main className={styles.list}>
+    <div className={styles.list}>
       {events.map((event, index) => (
         <EventCard key={`${event.title}/${index}`} {...event} />
       ))}
-    </main>
+    </div>
   );
 }

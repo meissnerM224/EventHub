@@ -28,7 +28,8 @@ export async function apiFetch(
 ): Promise<Response> {
   const response = await fetch(path, init);
   if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response));
+    const { message, code } = await readProblem(response);
+    throw new ApiError(response.status, message, code);
   }
   return response;
 }
@@ -36,11 +37,13 @@ export async function apiFetch(
 // ------------------ API Error ------------------ \\
 export class ApiError extends Error {
   readonly status: number;
+  readonly code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
     this.name = "ApiError";
+    this.code = code;
   }
 }
 
@@ -70,13 +73,21 @@ const fallbackMessages: Record<number, string> = {
   500: "Internal Server Error",
 };
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readProblem(
+  response: Response,
+): Promise<{ message: string; code?: string }> {
+  const fallback = fallbackMessages[response.status] ?? "Unexpected error";
   try {
     const problem = await response.json();
-    if (typeof problem?.detail === "string") return problem.detail;
-    if (typeof problem?.title === "string") return problem.title;
+    const message =
+      typeof problem?.detail === "string"
+        ? problem.detail
+        : typeof problem?.title === "string"
+          ? problem.title
+          : fallback;
+    const code = typeof problem?.code === "string" ? problem.code : undefined;
+    return { message, code };
   } catch {
-    /* empty */
+    return { message: fallback };
   }
-  return fallbackMessages[response.status] ?? "unexpected error";
 }

@@ -1,20 +1,16 @@
 import type { FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
-import { useLogin } from "../../api/auth";
-import { ApiError } from "../../api/client";
+import { useLogin, useMe } from "../../api/auth";
 import styles from "./LoginPage.module.css";
-
-// EMAIL= admin@admin.de
-// PASSWORD=  Test1234!
+import { errorMessageId } from "../../api/errors.ts";
 
 export default function LoginPage() {
   const intl = useIntl();
-  const navigate = useNavigate();
+  const { data: user, isPending } = useMe();
   const login = useLogin();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
-
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -23,26 +19,24 @@ export default function LoginPage() {
         email: String(form.get("email")),
         password: String(form.get("password")),
       },
-      { onSuccess: () => navigate(from, { replace: true }) },
+      // is obsulete, when user is set in useMe()
+      // { onSuccess: () => navigate(from, { replace: true }) },
     );
   }
 
-  const errorText =
-    login.error instanceof ApiError && login.error.status === 401
-      ? intl.formatMessage({ id: "auth.login.invalid" })
-      : login.error
-        ? intl.formatMessage({ id: "common.error" })
-        : null;
+  const errorText = login.error
+    ? intl.formatMessage({ id: errorMessageId(login.error) })
+    : null;
+  if (isPending) return null;
+  if (user) return <Navigate to={from} replace={true} />;
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <h1>{intl.formatMessage({ id: "auth.login.title" })}</h1>
-
         <label>
           {intl.formatMessage({ id: "auth.email" })}
           <input name="email" type="email" autoComplete="email" required />
         </label>
-
         <label>
           {intl.formatMessage({ id: "auth.password" })}
           <input
@@ -52,17 +46,14 @@ export default function LoginPage() {
             required
           />
         </label>
-
         <Link to="/forgot-password" className={styles.forgot}>
           {intl.formatMessage({ id: "auth.login.forgotPassword" })}
         </Link>
-
         {errorText && (
           <p role="alert" className={styles.error}>
             {errorText}
           </p>
         )}
-
         <button
           type="submit"
           className={styles.submit}
@@ -72,7 +63,6 @@ export default function LoginPage() {
             id: login.isPending ? "common.loading" : "auth.login.submit",
           })}
         </button>
-
         <p className={styles.switch}>
           {intl.formatMessage({ id: "auth.login.noAccount" })}{" "}
           <Link to="/register">
@@ -80,6 +70,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </form>
-    </main>
+    </div>
   );
 }

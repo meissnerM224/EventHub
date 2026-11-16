@@ -1,6 +1,7 @@
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
+using EventHub.Domain.Models;
 using EventHub.Infrastructure.Entities;
 using Microsoft.AspNetCore.Identity;
 
@@ -28,7 +29,7 @@ public class UserRoleService(UserManager<AppUser> userManager) : IUserRoleServic
 
     private async Task<AppUser> FindAsync(Guid userId) =>
         await userManager.FindByIdAsync(userId.ToString())
-        ?? throw new NotFoundException($"User {userId} not found.", userId.ToString());
+        ?? throw new NotFoundException(ErrorCodes.UserNotFound, "User", userId);
 
     private static void EnsureSucceeded(IdentityResult result)
     {
