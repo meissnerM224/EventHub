@@ -1,5 +1,3 @@
 namespace EventHub.Domain.Exceptions;
 
-public class UnauthorizedException(string message) : Exception(message)
-{
-}
+public class UnauthorizedException(string code, string message) : DomainException(code, message);

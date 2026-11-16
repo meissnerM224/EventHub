@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
-import { useRegister } from "../../api/auth";
-import { ApiError } from "../../api/client";
+import { useRegister, useMe } from "../../api/auth";
+import { errorMessageId } from "../../api/errors.ts";
 import styles from "./RegisterPage.module.css";
 
 export default function RegisterPage() {
   const intl = useIntl();
-  const navigate = useNavigate();
+  const { data: user, isPending } = useMe();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "/";
   const register = useRegister();
   const [passwordMismatch, setPasswordMismatch] = useState(false);
 
@@ -25,28 +27,27 @@ export default function RegisterPage() {
         password,
         displayName: String(form.get("displayName")),
       },
-      { onSuccess: () => navigate("/") },
+      //   useMe() make the rerouting in onSuccess obsolete
+      // { onSuccess: () => navigate("/") },
     );
   }
 
   const errorText = passwordMismatch
     ? intl.formatMessage({ id: "auth.register.passwordMismatch" })
-    : register.error instanceof ApiError && register.error.status === 409
-      ? intl.formatMessage({ id: "auth.register.emailTaken" })
-      : register.error
-        ? intl.formatMessage({ id: "common.error" })
-        : null;
+    : register.error
+      ? intl.formatMessage({ id: errorMessageId(register.error) })
+      : null;
 
+  if (isPending) return null;
+  if (user) return <Navigate to={from} replace={true} />;
   return (
     <div className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <h1>{intl.formatMessage({ id: "auth.register.title" })}</h1>
-
         <label>
           {intl.formatMessage({ id: "auth.email" })}
           <input name="email" type="email" autoComplete="email" required />
         </label>
-
         <label>
           {intl.formatMessage({ id: "auth.displayName" })}
           <input
@@ -56,7 +57,6 @@ export default function RegisterPage() {
             maxLength={100}
           />
         </label>
-
         <label>
           {intl.formatMessage({ id: "auth.password" })}
           <input
@@ -71,7 +71,6 @@ export default function RegisterPage() {
         <small id="password-hint" className={styles.hint}>
           {intl.formatMessage({ id: "auth.password.hint" })}
         </small>
-
         <label>
           {intl.formatMessage({ id: "auth.passwordConfirm" })}
           <input
@@ -81,13 +80,11 @@ export default function RegisterPage() {
             required
           />
         </label>
-
         {errorText && (
           <p role="alert" className={styles.error}>
             {errorText}
           </p>
         )}
-
         <button
           type="submit"
           className={styles.submit}

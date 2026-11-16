@@ -1,7 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { useLogout, useMe } from "../../api/auth";
-import { isOrganizer, isAdmin } from "../../api/auth";
+import { isOrganizer } from "../../api/auth";
 import styles from "./Header.module.css";
 
 export default function Header() {
@@ -9,7 +9,6 @@ export default function Header() {
   const navigate = useNavigate();
   const { data: me, isPending } = useMe();
   const logout = useLogout();
-  console.log("currentUser: " + me?.roles);
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -35,16 +34,6 @@ export default function Header() {
               }
             >
               {intl.formatMessage({ id: "nav.createEvent" })}
-            </NavLink>
-          )}
-          {isAdmin(me) && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) =>
-                isActive ? styles.active : styles.link
-              }
-            >
-              {intl.formatMessage({ id: "nav.admin" })}
             </NavLink>
           )}
         </nav>

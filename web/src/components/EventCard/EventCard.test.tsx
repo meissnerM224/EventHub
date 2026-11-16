@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import EventCard, { type EventCardProps } from "./EventCard";
+import { renderPage } from "../../test/render";
+import { messages } from "../../i18n/locale";
+
+const t = messages.de;
 
 const defaults: EventCardProps = {
   id: "c7432f4a-5a21-4f64-ad51-eac9860e11e9",
@@ -14,11 +17,7 @@ const defaults: EventCardProps = {
 };
 
 function renderCard(overrides: Partial<EventCardProps> = {}) {
-  return render(
-    <MemoryRouter>
-      <EventCard {...defaults} {...overrides} />
-    </MemoryRouter>,
-  );
+  return renderPage(<EventCard {...defaults} {...overrides} />);
 }
 
 describe("EventCard", () => {
@@ -41,10 +40,17 @@ describe("EventCard", () => {
     );
   });
 
-  it("deaktiviert den Button, wenn keine Plätze frei sind", () => {
+  it("zeigt 'Ausverkauft', wenn keine Plätze frei sind", () => {
     renderCard({ availableSpots: 0 });
 
-    expect(screen.getByRole("button", { name: "Sold out" })).toBeDisabled();
+    expect(screen.getByText(t["event.soldOut"])).toBeInTheDocument();
+    expect(screen.queryByText(t["event.booking"])).not.toBeInTheDocument();
+  });
+
+  it("enthält keinen Button innerhalb des Links", () => {
+    renderCard();
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("zeigt kein Bild, wenn imageUrl fehlt", () => {

@@ -15,8 +15,6 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
         if (filter?.CategoryId is { } categoryId) query = query.Where(e => e.CategoryId == categoryId);
         if (!string.IsNullOrWhiteSpace(filter?.Location))
             query = query.Where(e => e.Location.Contains(filter.Location));
-        if (!string.IsNullOrWhiteSpace(filter?.ImageUrl))
-            query = query.Where(e => e.Location.Contains(filter.ImageUrl));
         if (filter?.From is { } from) query = query.Where(e => e.StartsAt >= from);
         if (filter?.To is { } to) query = query.Where(e => e.StartsAt <= to);
         return await query
