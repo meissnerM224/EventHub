@@ -18,5 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // allow `declare global { namespace … }` type augmentation (e.g. FormatjsIntl)
+      "@typescript-eslint/no-namespace": ["error", { allowDeclarations: true }],
+    },
   },
 ]);

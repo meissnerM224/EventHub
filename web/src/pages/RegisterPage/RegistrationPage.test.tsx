@@ -5,6 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { server } from "../../test/server";
 import { renderPage } from "../../test/render";
 import RegisterPage from "./RegisterPage";
+import LoginPage from "../LoginPage/LoginPage.tsx";
+import { messages } from "../../i18n/locale";
+
+const t = messages.de;
 
 const createdUser = {
   userId: "u-1",
@@ -13,14 +17,17 @@ const createdUser = {
   expiresAt: "2030-01-01T00:00:00Z",
 };
 
-function renderRegister() {
-  return renderPage(
+// The page renders nothing until useMe() resolves, so wait for the form.
+async function renderRegister() {
+  const result = renderPage(
     <Routes>
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<p>Startseite</p>} />
     </Routes>,
     { route: "/register" },
   );
+  await screen.findByRole("heading", { name: /registrieren/i });
+  return result;
 }
 
 async function fillForm({
@@ -46,8 +53,16 @@ async function fillForm({
 }
 
 describe("RegisterPage", () => {
-  it("renders all form fields", () => {
-    renderRegister();
+  beforeEach(() => {
+    server.use(
+      http.get("/api/auth/me", () =>
+        HttpResponse.json({ status: 401 }, { status: 401 }),
+      ),
+    );
+  });
+
+  it("renders all form fields", async () => {
+    await renderRegister();
 
     expect(
       screen.getByRole("heading", { name: /registrieren/i }),
@@ -74,7 +89,7 @@ describe("RegisterPage", () => {
         return HttpResponse.json(createdUser, { status: 201 });
       }),
     );
-    const { queryClient } = renderRegister();
+    const { queryClient } = await renderRegister();
 
     await fillForm();
 
@@ -95,7 +110,7 @@ describe("RegisterPage", () => {
         return HttpResponse.json(createdUser, { status: 201 });
       }),
     );
-    renderRegister();
+    await renderRegister();
 
     await fillForm({ passwordConfirm: "Other1234!" });
 
@@ -111,7 +126,7 @@ describe("RegisterPage", () => {
         HttpResponse.json(createdUser, { status: 201 }),
       ),
     );
-    renderRegister();
+    await renderRegister();
     const user = userEvent.setup();
 
     await fillForm({ passwordConfirm: "Other1234!" });
@@ -126,15 +141,18 @@ describe("RegisterPage", () => {
   it("shows email-taken message on 409", async () => {
     server.use(
       http.post("/api/auth/register", () =>
-        HttpResponse.json({ status: 409, detail: "…" }, { status: 409 }),
+        HttpResponse.json(
+          { status: 409, detail: "…", code: "user.email_taken" },
+          { status: 409 },
+        ),
       ),
     );
-    renderRegister();
+    await renderRegister();
 
     await fillForm({ email: "taken@test.de" });
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /bereits registriert/i,
+      t["error.user.email_taken"],
     );
     expect(screen.queryByText("Startseite")).not.toBeInTheDocument();
   });
@@ -145,12 +163,12 @@ describe("RegisterPage", () => {
         HttpResponse.json({ status: 500 }, { status: 500 }),
       ),
     );
-    renderRegister();
+    await renderRegister();
 
     await fillForm();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /fehler aufgetreten/i,
+      t["common.error"],
     );
   });
 
@@ -161,7 +179,7 @@ describe("RegisterPage", () => {
         return HttpResponse.json(createdUser, { status: 201 });
       }),
     );
-    renderRegister();
+    await renderRegister();
 
     await fillForm();
 
@@ -176,7 +194,7 @@ describe("RegisterPage", () => {
         return HttpResponse.json(createdUser, { status: 201 });
       }),
     );
-    renderRegister();
+    await renderRegister();
 
     await userEvent.click(
       screen.getByRole("button", { name: /registrieren/i }),
@@ -184,4 +202,30 @@ describe("RegisterPage", () => {
 
     expect(onRequest).not.toHaveBeenCalled();
   });
+});
+
+it("leitet eingeloggte Nutzer zur Startseite weiter", async () => {
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({
+        userId: "11111111-1111-1111-1111-111111111111",
+        displayName: "Test User",
+        roles: ["Participant"],
+        expiresAt: "2030-01-01T00:00:00Z",
+      }),
+    ),
+  );
+
+  renderPage(
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<p>Startseite</p>} />
+    </Routes>,
+    { route: "/login" },
+  );
+
+  expect(await screen.findByText("Startseite")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: /anmelden/i }),
+  ).not.toBeInTheDocument();
 });

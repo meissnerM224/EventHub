@@ -1,5 +1,3 @@
 namespace EventHub.Domain.Exceptions;
 
-public class BusinessRuleException(string message) : Exception(message)
-{
-}
+public class BusinessRuleException(string code, string message) : DomainException(code, message);

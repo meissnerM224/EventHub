@@ -16,7 +16,7 @@ public class AuthService(
     {
         if (await userManager.FindByEmailAsync(email) is not null)
         {
-            throw new AlreadyExistException($"{email} is already registered.");
+            throw new AlreadyExistException(ErrorCodes.UserEmailTaken, $"{email} is already registered.");
         }
 
         var user = new AppUser
@@ -30,7 +30,7 @@ public class AuthService(
         var result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
-            throw new BusinessRuleException(string.Join(" ", result.Errors.Select(e => e.Description)));
+            throw new BusinessRuleException(ErrorCodes.UserRegistrationFailed, string.Join(" ", result.Errors.Select(e => e.Description)));
         }
 
         await userManager.AddToRoleAsync(user, RoleName.Participant);
@@ -42,7 +42,7 @@ public class AuthService(
         var user = await userManager.FindByEmailAsync(email);
         if (user is null || !await userManager.CheckPasswordAsync(user, password))
         {
-            throw new UnauthorizedException("Login failed, E-Mail or Password are wrong.");
+            throw new UnauthorizedException(ErrorCodes.AuthInvalidCredentials, "Login failed, E-Mail or Password are wrong.");
         }
 
         var roles = await userManager.GetRolesAsync(user);

@@ -370,6 +370,28 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Update_NeverLeavesMoreBookingsThanSpots_WhenCapacityShrinksDuringBookings()
+    {
+        const int contenders = 20;
+        const int newCapacity = 5;
+        var title = $"Shrinking Capacity {Guid.NewGuid():N}";
+        var startAt = DateTimeOffset.UtcNow.AddHours(2);
+        var eventId = await CreateEventAsync(title, maxParticipants: contenders,
+            startAt: startAt, doorsOpenAt: startAt.AddHours(-1));
+        var organizer = await factory.CreateAuthenticatedClientAsync(EventHubWebApplicationFactory.OrganizerEmail);
+        var clients = await Task.WhenAll(Enumerable.Range(0, contenders).Select(_ => CreateParticipantClientAsync()));
+
+        var bookings = clients.Select(c => c.PostAsync($"/api/events/{eventId}/bookings", content: null));
+        var update = organizer.PutAsJsonAsync($"/api/events/{eventId}", NewEvent(title,
+            maxParticipants: newCapacity, startAt: startAt, doorsOpenAt: startAt.AddHours(-1)));
+        await Task.WhenAll([.. bookings, update]);
+
+        var detail = await factory.CreateClient().GetFromJsonAsync<EventDetail>($"/api/events/{eventId}");
+        Assert.True(detail!.AvailableSpots >= 0,
+            $"MaxParticipants {detail.MaxParticipants}, available {detail.AvailableSpots}");
+    }
+
+    [Fact]
     public async Task Book_ReturnsConflict_WhenEventIsFullyBooked()
     {
         var organizer = await factory.CreateAuthenticatedClientAsync(
@@ -499,6 +521,55 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 
         var detail = await factory.CreateClient().GetFromJsonAsync<EventDetail>(location.ToString());
         Assert.Equal("Cache Detail Updated", detail!.EventTitle);
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsUpdatedSpots_AfterBookingAndCancellation()
+    {
+        var eventId = await CreateEventAsync("Cache Spots Detail", maxParticipants: 5);
+        var anonymous = factory.CreateClient();
+        await anonymous.GetAsync($"/api/events/{eventId}");
+
+        var participant = await CreateParticipantClientAsync();
+        (await participant.PostAsync($"/api/events/{eventId}/bookings", content: null)).EnsureSuccessStatusCode();
+        var afterBooking = await anonymous.GetFromJsonAsync<EventDetail>($"/api/events/{eventId}");
+
+        (await participant.DeleteAsync($"/api/events/{eventId}/bookings/me")).EnsureSuccessStatusCode();
+        var afterCancel = await anonymous.GetFromJsonAsync<EventDetail>($"/api/events/{eventId}");
+
+        Assert.Equal(4, afterBooking!.AvailableSpots);
+        Assert.Equal(5, afterCancel!.AvailableSpots);
+    }
+
+    [Fact]
+    public async Task GetAll_ReturnsUpdatedSpots_AfterBooking()
+    {
+        var title = $"Cache Spots List {Guid.NewGuid():N}";
+        var eventId = await CreateEventAsync(title, maxParticipants: 5);
+        var anonymous = factory.CreateClient();
+        await anonymous.GetAsync("/api/events");
+
+        var participant = await CreateParticipantClientAsync();
+        (await participant.PostAsync($"/api/events/{eventId}/bookings", content: null)).EnsureSuccessStatusCode();
+        var events = await anonymous.GetFromJsonAsync<List<EventSummary>>("/api/events");
+
+        Assert.Equal(4, events!.Single(e => e.Title == title).AvailableSpots);
+    }
+
+    [Fact]
+    public async Task GetAll_DoesNotShareCache_BetweenDifferentToFilters()
+    {
+        var title = $"Cache To Filter {Guid.NewGuid():N}";
+        var startAt = DateTimeOffset.UtcNow.AddDays(10);
+        await CreateEventAsync(title, startAt: startAt, doorsOpenAt: startAt.AddHours(-1));
+        var client = factory.CreateClient();
+        string Url(DateTimeOffset to) => $"/api/events?to={Uri.EscapeDataString(to.ToString("o"))}";
+
+        var before = await client.GetFromJsonAsync<List<EventSummary>>(Url(startAt.AddDays(-5)));
+        var after = await client.GetFromJsonAsync<List<EventSummary>>(Url(startAt.AddDays(5)));
+
+        Assert.DoesNotContain(before!, e => e.Title == title);
+        Assert.Contains(after!, e => e.Title == title);
     }
 
     [Fact]
