@@ -1,6 +1,9 @@
 export const de = {
   "account.bookings.browse": "Events entdecken",
   "account.bookings.empty": "Du hast noch keine Buchungen.",
+  "account.bookings.emptyPast": "Noch keine vergangenen Events.",
+  "account.bookings.past": "Vergangen",
+  "account.bookings.upcoming": "Anstehend",
   "account.greeting": "Hallo, {name}",
   "account.nav.bookings": "Meine Buchungen",
   "account.nav.settings": "Einstellungen",

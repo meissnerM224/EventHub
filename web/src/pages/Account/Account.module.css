@@ -86,3 +86,83 @@
 .cta:hover {
   background: var(--c-primary-hover);
 }
+
+.bookings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.booking {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding-block: var(--sp-3);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.booking:last-child {
+  border-bottom: none;
+}
+
+.bookingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.bookingInfo a {
+  color: var(--c-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bookingInfo a:hover {
+  color: var(--c-primary);
+}
+
+.warning {
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+}
+
+.secondary {
+  margin-left: auto;
+  padding: var(--sp-2) var(--sp-4);
+  background: transparent;
+  color: var(--c-ink-muted);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-button);
+  font: inherit;
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.subTabs {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.subTab,
+.subTabActive {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--c-ink-muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.subTabActive {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: var(--c-surface);
+}
