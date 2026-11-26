@@ -12,7 +12,7 @@ namespace EventHub.Api.Controllers;
 public class CategoriesController(IEventsService service) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<CategorySummary>), 200)]
+    [ProducesResponseType<IEnumerable<CategorySummary>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<CategorySummary>>> GetAll()
     {
         return Ok(await service.GetCategoriesAsync());

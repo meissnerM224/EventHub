@@ -71,7 +71,7 @@ public class AdminUserRolesTests(EventHubWebApplicationFactory factory)
     // ── Grant ────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Grant_TakesEffect_AtNextLogin()
+    public async Task Grant_EndsTheOldSession_AndTakesEffectAtNextLogin()
     {
         var (userClient, user) = await RegisterFreshUserAsync();
         var admin = await AdminClientAsync();
@@ -79,10 +79,9 @@ public class AdminUserRolesTests(EventHubWebApplicationFactory factory)
         await AssertStatus(HttpStatusCode.NoContent,
             await admin.PutAsync(OrganizerRoleUrl(user.UserId), null));
 
-        // The existing token was issued before the change and still says
-        // Participant. This pins the trade-off of stateless auth (Session 3).
-        var before = await MeAsync(userClient);
-        Assert.DoesNotContain(RoleName.Organizer, before.Roles);
+        // The token was issued before the change. It used to stay valid with the old roles
+        // until it expired (stateless JWT); now the new security stamp rejects it right away.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await userClient.GetAsync("/api/auth/me")).StatusCode);
 
         var reloggedClient = await factory.CreateAuthenticatedClientAsync(user.Email);
         var after = await MeAsync(reloggedClient);

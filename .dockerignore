@@ -10,3 +10,6 @@ scripts/
 **/appsettings.Development.json
 .env
 README.md
+**/node_modules/
+web/dist/
+web/dotnet-install.sh

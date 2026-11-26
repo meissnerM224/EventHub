@@ -17,44 +17,51 @@ import { Role } from "./api/auth";
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<EventPage />} />
-          <Route path="/events/:id" element={<EventDetailsPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route
-            path="/events/new"
-            element={
-              <RequireAuth role={Role.Organizer}>
-                <CreateNewEvent />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/account"
-            element={
-              <RequireAuth>
-                <AccountPage />
-              </RequireAuth>
-            }
-          >
-            <Route index element={<Navigate to="bookings" replace />} />
-            <Route path="bookings" element={<MyBookingsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-          <Route
-            path="/admin"
-            element={
-              <RequireAuth role={Role.Admin}>
-                <AdminPage />
-              </RequireAuth>
-            }
-          />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
+  );
+}
+
+// Separate from App so tests can render the real route tree inside a MemoryRouter.
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<EventPage />} />
+        <Route path="/events/:id" element={<EventDetailsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route
+          path="/events/new"
+          element={
+            <RequireAuth role={Role.Organizer}>
+              <CreateNewEvent />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <RequireAuth>
+              <AccountPage />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Navigate to="bookings" replace />} />
+          <Route path="bookings" element={<MyBookingsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth role={Role.Admin}>
+              <AdminPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   );
 }

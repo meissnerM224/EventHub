@@ -1,4 +1,50 @@
+# Security headers, imported for normal responses and for error responses:
+# Caddy answers errors (e.g. a missing file) through handle_errors, a separate
+# route that does not run the header directives of the site block.
+# `defer` applies them after the upstream responded, so they also
+# override/remove headers set by the API (Kestrel) or Garage.
+(security_headers) {
+    header {
+        defer
+        # Stop browsers from MIME-sniffing responses into executable types
+        # (e.g. an uploaded file interpreted as HTML/JS).
+        X-Content-Type-Options "nosniff"
+        # Clickjacking protection for older browsers (CSP frame-ancestors covers modern ones).
+        X-Frame-Options "DENY"
+        # Do not leak full URLs (paths, query strings) to other origins.
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # The app needs none of these powerful browser features; deny them to all frames.
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        # Do not advertise server software (Caddy / Kestrel).
+        -Server
+
+        # HSTS is intentionally DISABLED for `localhost`: browsers apply HSTS per host
+        # regardless of port, so it would force HTTPS on every localhost port
+        # (e.g. the Vite dev server on http://localhost:5173).
+        # Enable this once a real domain replaces `localhost`:
+        # Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+}
+
+# Content-Security-Policy: limits where scripts, styles, images, connections etc.
+# may come from, mitigating XSS and data injection. Everything is same-origin
+# (Vite bundle, /api, /media); `blob:` is needed for the image upload preview
+# (URL.createObjectURL). frame-ancestors 'none' = modern clickjacking protection.
+# The argument is a path matcher, so the site can leave out /scalar* (see below).
+(csp) {
+    header {args[0]} {
+        defer
+        Content-Security-Policy "default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    }
+}
+
 localhost {
+    import security_headers
+    # Not for /scalar*: the Scalar API reference (Development only) loads
+    # assets from a CDN and uses inline scripts/styles.
+    @not_scalar not path /scalar*
+    import csp @not_scalar
+
     handle_path /media/* {
         rewrite * {path}
         reverse_proxy storage:3902 {
@@ -10,10 +56,42 @@ localhost {
         reverse_proxy api:8080
     }
 
-    handle {
+    # API reference and OpenAPI document. The API only maps them in Development,
+    # so in production these answer 404 from the API.
+    handle /scalar* {
         reverse_proxy api:8080
+    }
+    handle /openapi/* {
+        reverse_proxy api:8080
+    }
+
+    # The React app, built into the image (web/Dockerfile).
+
+    # Vite puts a content hash into every file name under /assets: a new build means
+    # new names, so these may be cached forever. No index.html fallback here – a missing
+    # asset must be a 404, not an HTML page cached for a year under a .js URL.
+    handle /assets/* {
+        root * /srv/web
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+
+    # Client-side routing: /events/123, /admin … do not exist as files, so they get
+    # index.html and React Router takes over. index.html must always be revalidated,
+    # or browsers keep an old build that points to assets that no longer exist.
+    handle {
         root * /srv/web
         try_files {path} /index.html
+        header Cache-Control "no-cache"
         file_server
+    }
+
+    # Errors produced by Caddy itself (missing asset, upstream down): security headers,
+    # and no long-lived caching of the error.
+    handle_errors {
+        import security_headers
+        import csp *
+        header Cache-Control "no-store"
+        respond "{err.status_code} {err.status_text}"
     }
 }

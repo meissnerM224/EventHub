@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { eventSummarySchema, eventDetailSchema } from "./types";
 import { apiFetch, apiPost, apiGet, parseJson } from "./client";
@@ -44,9 +45,22 @@ export type CreateEventInput = {
 
 export function useCreateEvent() {
   const queryClient = useQueryClient();
+  // The upload happens before the create. If the create fails (e.g. invalid dates) and the
+  // form is sent again with the same file, reuse the stored image instead of uploading a copy.
+  // Images that are never used are removed by the ImageCleanupWorker in the backend.
+  const uploaded = useRef<{ file: File; url: string } | null>(null);
   return useMutation({
     mutationFn: async ({ event, imageFile }: CreateEventInput) => {
-      const image = imageFile ? await uploadImage(imageFile) : null;
+      let image: string | null = null;
+      if (imageFile) {
+        if (uploaded.current?.file !== imageFile) {
+          uploaded.current = {
+            file: imageFile,
+            url: await uploadImage(imageFile),
+          };
+        }
+        image = uploaded.current.url;
+      }
       return createEvent({ ...event, image });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["events"] }),

@@ -1,6 +1,7 @@
 import { ApiError, apiFetch, apiGet, apiPost } from "./client";
 import { currentUserSchema, type CurrentUser } from "./types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { resetSession } from "./queryClient";
 
 export type Credentials = {
   email: string;
@@ -62,17 +63,14 @@ export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: login,
-    onSuccess: (user) => queryClient.setQueryData(meKey, user),
+    onSuccess: (user) => resetSession(queryClient, user),
   });
 }
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: logout,
-    onSuccess: () => {
-      queryClient.clear();
-      queryClient.setQueryData(meKey, null);
-    },
+    onSuccess: () => resetSession(queryClient, null),
   });
 }
 
@@ -80,6 +78,6 @@ export function useRegister() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: register,
-    onSuccess: (user) => queryClient.setQueryData(meKey, user),
+    onSuccess: (user) => resetSession(queryClient, user),
   });
 }
