@@ -1,0 +1,63 @@
+.box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-card);
+  background: var(--c-bg);
+}
+
+.success {
+  border-left: 4px solid var(--c-success);
+}
+
+.warning {
+  border-left: 4px solid var(--c-warning);
+}
+
+.text {
+  margin: 0;
+  color: var(--c-ink);
+}
+
+/* Same look on <a> and <button> */
+.button,
+.secondary {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-button);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button {
+  background: var(--c-primary);
+  color: var(--c-surface);
+  border: none;
+}
+
+.button:hover {
+  background: var(--c-primary-hover);
+}
+
+.secondary {
+  margin-left: auto;
+  background: transparent;
+  color: var(--c-ink-muted);
+  border: 1px solid var(--c-border);
+}
+
+.button:disabled,
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+}

@@ -27,6 +27,9 @@ public sealed class BookingsService(
         return await bookingRepository.GetConfirmedBookingsAsync(eventId);
     }
 
+    public Task<IReadOnlyList<MyBooking>> GetMyBookingsAsync(Guid userId)
+        => bookingRepository.GetConfirmedByUserAsync(userId);
+
     public async Task<BookingConfirmation> BookAsync(Guid eventId, Guid userId)
     {
         var traceId = Activity.Current?.Id;

@@ -22,7 +22,9 @@ public sealed class UploadController(IImageStorage storage) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<string>> UploadAsync(IFormFile file, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
+    public async Task<ActionResult<UploadResult>> UploadAsync(IFormFile file, CancellationToken ct)
     {
         if (file is null || file.Length == 0) throw new BusinessRuleException(ErrorCodes.FileMissing, "No file was provided");
         await using var input = file.OpenReadStream();

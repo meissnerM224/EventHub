@@ -99,4 +99,16 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
             .FromSql($"""SELECT * FROM "Events" WHERE "Id" = {id} FOR UPDATE""")
             .FirstOrDefaultAsync();
     }
+
+    public Task<List<CategorySummary>> GetCategoriesAsync() =>
+        dbContext.Categories
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .Select(c => new CategorySummary
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description
+            })
+            .ToListAsync();
 }

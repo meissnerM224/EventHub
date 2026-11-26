@@ -1,0 +1,33 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: #fff4ed;
+  border: 1px solid var(--c-warning);
+  border-left-width: 4px;
+  border-radius: var(--r-button);
+}
+
+.message {
+  margin: 0;
+  color: var(--c-ink);
+  font-size: var(--fs-sm);
+}
+
+.retry {
+  margin-left: auto;
+  padding: var(--sp-1) var(--sp-3);
+  background: transparent;
+  color: var(--c-warning);
+  border: 1px solid var(--c-warning);
+  border-radius: var(--r-button);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.retry:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
