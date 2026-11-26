@@ -22,4 +22,9 @@ public interface IEventsRepository
     Task SaveChangesAsync();
 
     Task<Event?> GetEventEntityForUpdateAsync(Guid id);
+
+    Task<bool> CategoryNameExistsAsync(string name);
+
+    Task<Category> CreateCategoryAsync(Category category);
+
 }

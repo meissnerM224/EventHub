@@ -7,6 +7,7 @@ const codeMessages: Record<string, MessageId> = {
   "auth.invalid_credentials": "error.auth.invalid_credentials",
   "booking.not_found": "error.booking.not_found",
   "category.not_found": "error.category.not_found",
+  "category.already_exists": "error.category.already_exists",
   "event.already_exists": "error.event.already_exists",
   "event.already_started": "error.event.already_started",
   "event.cancelled": "error.event.cancelled",

@@ -1,8 +1,8 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { useLogout, useMe } from "../../api/auth";
-import { isOrganizer } from "../../api/auth";
 import styles from "./Header.module.css";
+import { isAdmin, isOrganizer } from "../../api/auth";
 
 export default function Header() {
   const intl = useIntl();
@@ -36,7 +36,18 @@ export default function Header() {
               {intl.formatMessage({ id: "nav.createEvent" })}
             </NavLink>
           )}
+          {isAdmin(me) && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                isActive ? styles.active : styles.link
+              }
+            >
+              {intl.formatMessage({ id: "nav.admin" })}
+            </NavLink>
+          )}
         </nav>
+
         {/*<></>*/}
         <div className={styles.account}>
           {isPending ? null : me ? (

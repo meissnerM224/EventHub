@@ -11,6 +11,7 @@ import MyBookingsPage from "./pages/Account/MyBookingsPage";
 import CreateNewEvent from "./pages/CreateNewEvent/CreateNewEvent";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import AdminPage from "./pages/Admin/AdminPage";
 import { Role } from "./api/auth";
 
 export default function App() {
@@ -43,7 +44,14 @@ export default function App() {
             <Route path="bookings" element={<MyBookingsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
-
+          <Route
+            path="/admin"
+            element={
+              <RequireAuth role={Role.Admin}>
+                <AdminPage />
+              </RequireAuth>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

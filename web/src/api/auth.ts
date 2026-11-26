@@ -22,6 +22,12 @@ export async function getMe(): Promise<CurrentUser | null> {
   }
 }
 
+// Only needs the roles – works for CurrentUser and AdminUser alike.
+export const hasRole = (
+  user: { roles: string[] } | null | undefined,
+  role: Role,
+) => user?.roles.includes(role) ?? false;
+
 export function login(credentials: Credentials): Promise<CurrentUser> {
   return apiPost("/api/auth/login", credentials, parseUser);
 }
@@ -41,8 +47,8 @@ export const Role = {
 } as const;
 export type Role = (typeof Role)[keyof typeof Role];
 
-export const hasRole = (user: CurrentUser | null | undefined, role: Role) =>
-  user?.roles.includes(role) ?? false;
+// export const hasRole = (user: CurrentUser | null | undefined, role: Role) =>
+//   user?.roles.includes(role) ?? false;
 
 export const isOrganizer = (user: CurrentUser | null | undefined) =>
   hasRole(user, Role.Organizer);

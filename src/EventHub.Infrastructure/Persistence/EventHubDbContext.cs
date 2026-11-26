@@ -55,6 +55,7 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
         {
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(400);
+            entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Booking

@@ -111,4 +111,13 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
                 Description = c.Description
             })
             .ToListAsync();
+
+    public Task<bool> CategoryNameExistsAsync(string name) => dbContext.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
+
+    public async Task<Category> CreateCategoryAsync(Category category)
+    {
+        dbContext.Categories.Add(category);
+        await dbContext.SaveChangesAsync();
+        return category;
+    }
 }

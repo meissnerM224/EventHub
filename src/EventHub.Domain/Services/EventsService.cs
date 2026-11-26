@@ -186,4 +186,23 @@ public class EventsService(
         await cache.SetAsync(EventCacheKeys.Categories, categories, TimeSpan.FromHours(1));
         return categories;
     }
+
+    public async Task<CategorySummary> CreateCategoryAsync(string name, string description)
+    {
+        var trimmed = name.Trim();
+        if (await repository.CategoryNameExistsAsync(trimmed))
+        {
+            throw new AlreadyExistException(ErrorCodes.CategoryAlreadyExists, $"Category '{trimmed}' already exists.");
+        }
+
+        var category =
+            await repository.CreateCategoryAsync(new Category { Name = trimmed, Description = description.Trim() });
+        await cache.RemoveAsync(EventCacheKeys.Categories);
+        return new CategorySummary
+        {
+            Id = category.Id,
+            Name = category.Name,
+            Description = category.Description,
+        };
+    }
 }

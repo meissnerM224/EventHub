@@ -20,4 +20,5 @@ public static class ErrorCodes
     public const string UserEmailTaken = "user.email_taken";
     public const string UserNotFound = "user.not_found";
     public const string UserRegistrationFailed = "user.registration_failed";
+    public const string CategoryAlreadyExists = "category.already_exists";
 }

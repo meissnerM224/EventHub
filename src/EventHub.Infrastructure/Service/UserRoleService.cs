@@ -4,10 +4,13 @@ using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using EventHub.Infrastructure.Entities;
 using Microsoft.AspNetCore.Identity;
+using EventHub.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Infrastructure.Service;
 
-public class UserRoleService(UserManager<AppUser> userManager) : IUserRoleService
+public class UserRoleService(UserManager<AppUser> userManager, EventHubDbContext db) : IUserRoleService
+
 {
     public async Task GrantOrganizerAsync(Guid userId)
     {
@@ -26,6 +29,23 @@ public class UserRoleService(UserManager<AppUser> userManager) : IUserRoleServic
 
         EnsureSucceeded(await userManager.RemoveFromRoleAsync(user, RoleName.Organizer));
     }
+
+    public async Task<IReadOnlyList<AdminUserSummary>> GetUsersAsync() =>
+        await db.Users
+            .AsNoTracking()
+            .OrderBy(u => u.DisplayName)
+            .Select(u => new AdminUserSummary
+            {
+                UserId = u.Id,
+                DisplayName = u.DisplayName,
+                Email = u.Email ?? string.Empty,
+                Roles = db.UserRoles
+                    .Where(ur => ur.UserId == u.Id)
+                    .Join(db.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name!)
+                    .OrderBy(name => name)
+                    .ToList()
+            })
+            .ToListAsync();
 
     private async Task<AppUser> FindAsync(Guid userId) =>
         await userManager.FindByIdAsync(userId.ToString())
