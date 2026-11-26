@@ -77,52 +77,6 @@
   gap: var(--sp-3);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-
-.field input {
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-button);
-  font: inherit;
-  font-weight: 400;
-}
-
-.primary,
-.secondary {
-  padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--r-button);
-  font: inherit;
-  cursor: pointer;
-}
-
-.primary {
-  background: var(--c-primary);
-  color: var(--c-surface);
-  border: none;
-}
-
-.primary:hover {
-  background: var(--c-primary-hover);
-}
-
-.secondary {
-  background: transparent;
-  color: var(--c-ink-muted);
-  border: 1px solid var(--c-border);
-}
-
-.primary:disabled,
-.secondary:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
 @media (max-width: 600px) {
   .form {
     grid-template-columns: minmax(0, 1fr);

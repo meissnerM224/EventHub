@@ -23,9 +23,21 @@ const codeMessages: Record<string, MessageId> = {
   "user.registration_failed": "error.registration_failed",
 };
 
-export function errorMessageId(error: unknown): MessageId {
-  if (error instanceof ApiError && error.code) {
-    return codeMessages[error.code] ?? "common.error";
-  }
+// For errors without a domain code (e.g. 403 from [Authorize], 413 from the upload size limit,
+// a 500 or a proxy error page) the status still says more than "an error occurred".
+function statusMessage(status: number): MessageId {
+  if (status === 401) return "error.status.unauthorized";
+  if (status === 403) return "error.status.forbidden";
+  if (status === 404) return "error.status.not_found";
+  if (status === 413) return "error.status.too_large";
+  if (status >= 500) return "error.status.server";
   return "common.error";
+}
+
+// The only way an API error reaches the UI: code first, then status, then the generic text.
+// ApiError.message is never shown – it is for logs and the console.
+export function errorMessageId(error: unknown): MessageId {
+  if (!(error instanceof ApiError)) return "common.error";
+  if (error.code && codeMessages[error.code]) return codeMessages[error.code];
+  return statusMessage(error.status);
 }

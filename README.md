@@ -130,6 +130,37 @@ The client currently includes event discovery and detail pages, registration and
 
 Registration and login set a signed JWT in the `eventhub_auth` HttpOnly, Secure, SameSite=Strict cookie. The API also supports bearer tokens. The web client uses the cookie-based session and checks the current user through `/api/auth/me`. Roles include `Organizer` and `Administrator`; event management and image upload require the Organizer role, while role grants and revocations require an Administrator.
 
+### Set up the first administrator
+
+New accounts get the `Participant` role. An administrator can grant and revoke `Organizer` on the admin page (`/admin`), but no endpoint grants `Administrator` itself, so the first one is assigned directly in the database.
+
+1. Register the account through the web client or `POST /api/auth/register`.
+2. Assign the role with SQL. With Docker Compose:
+
+   ```bash
+   docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+   INSERT INTO "UserRoles" ("UserId", "RoleId")
+   SELECT u."Id", r."Id"
+   FROM "Users" u
+   JOIN "Roles" r ON r."NormalizedName" = 'ADMINISTRATOR'
+   WHERE u."NormalizedEmail" = UPPER('admin@example.com')
+   ON CONFLICT DO NOTHING;
+   SQL
+   ```
+
+   Replace `admin@example.com` with the registered email. `INSERT 0 1` means the role was assigned; `INSERT 0 0` means the email was not found or the user already is an administrator.
+3. Sign out and sign in again. Roles are part of the JWT, so the existing session does not see the new role.
+
+To check who is an administrator:
+
+```sql
+SELECT u."Email"
+FROM "UserRoles" ur
+JOIN "Users" u ON u."Id" = ur."UserId"
+JOIN "Roles" r ON r."Id" = ur."RoleId"
+WHERE r."NormalizedName" = 'ADMINISTRATOR';
+```
+
 ## API endpoints
 
 | Method | Path | Access |
@@ -186,7 +217,7 @@ The web-client checks are defined in `web/package.json`:
 cd web
 pnpm format:check
 pnpm lint
-pnpm exec tsc --noEmit
+pnpm exec tsc -b
 pnpm test
 pnpm build
 ```

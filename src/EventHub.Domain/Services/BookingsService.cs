@@ -13,7 +13,8 @@ public sealed class BookingsService(
     IEventsRepository eventsRepository,
     ITransactionRunner transactionRunner,
     INotificationQueue notificationQueue,
-    ICacheService cache)
+    ICacheService cache,
+    TimeProvider timeProvider)
     : IBookingsService
 {
     public async Task<IReadOnlyList<BookingSummary>> GetBookingsAsync(Guid eventId, Guid currentUserId)
@@ -39,7 +40,7 @@ public sealed class BookingsService(
 
             if (evt == null) throw new NotFoundException(ErrorCodes.EventNotFound, nameof(Event), eventId);
             if (evt.IsCancelled) throw new BusinessRuleException(ErrorCodes.EventCancelled, "The Event is canceled");
-            if (evt.StartsAt <= DateTimeOffset.Now)
+            if (evt.StartsAt <= timeProvider.GetUtcNow())
             {
                 throw new BusinessRuleException(ErrorCodes.EventAlreadyStarted, $"The Event already started at {evt.StartsAt}.");
             }
@@ -57,7 +58,7 @@ public sealed class BookingsService(
                 EventId = eventId,
                 UserId = userId,
                 Status = BookingStatus.Confirmed,
-                BookedAt = DateTimeOffset.UtcNow
+                BookedAt = timeProvider.GetUtcNow()
             };
             await bookingRepository.AddAsync(bookingRequest);
 
@@ -97,10 +98,10 @@ public sealed class BookingsService(
 
 
         if (evt.IsCancelled) throw new BusinessRuleException(ErrorCodes.EventCancelled, "The Event is cancelled");
-        if (evt.StartsAt <= DateTimeOffset.UtcNow) throw new BusinessRuleException(ErrorCodes.EventAlreadyStarted, "Event already started.");
+        if (evt.StartsAt <= timeProvider.GetUtcNow()) throw new BusinessRuleException(ErrorCodes.EventAlreadyStarted, "Event already started.");
 
         booking.Status = BookingStatus.Cancelled;
-        booking.CancelledAt = DateTimeOffset.UtcNow;
+        booking.CancelledAt = timeProvider.GetUtcNow();
         await bookingRepository.SaveAsync();
         await InvalidateEventCacheAsync(eventId);
     }

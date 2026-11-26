@@ -39,15 +39,3 @@
   color: var(--c-ink-muted);
   line-height: 1.4;
 }
-
-.cta {
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--c-primary);
-  color: var(--c-surface);
-  border-radius: var(--r-button);
-  text-decoration: none;
-}
-
-.cta:hover {
-  background: var(--c-primary-hover);
-}

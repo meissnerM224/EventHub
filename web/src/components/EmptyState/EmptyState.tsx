@@ -1,4 +1,5 @@
 import styles from "./EmptyState.module.css";
+import { Button } from "../Button/Button";
 
 type Props = {
   message: string;
@@ -10,14 +11,9 @@ export default function EmptyState({ message, action }: Props) {
       <div className={styles.body}>
         <h2>{message}</h2>
         {action && (
-          <button
-            type="button"
-            className={styles.retry}
-            onClick={action.onClick}
-            disabled={action.disabled}
-          >
+          <Button onClick={action.onClick} disabled={action.disabled}>
             {action.label}
-          </button>
+          </Button>
         )}
       </div>
     </div>

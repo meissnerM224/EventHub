@@ -1,0 +1,44 @@
+/* Same look on <a> and <button>: a <button> brings its own border,
+   background and system font, so reset them here. */
+.button {
+  display: inline-block;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-button);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.primary {
+  background: var(--c-primary);
+  color: var(--c-surface);
+}
+.primary:hover:not(:disabled) {
+  background: var(--c-primary-hover);
+}
+
+.secondary {
+  background: transparent;
+  color: var(--c-ink-muted);
+  border-color: var(--c-border);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--c-bg);
+}
+
+.warning {
+  background: transparent;
+  color: var(--c-warning);
+  border-color: var(--c-warning);
+}
+
+.sm {
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-sm);
+}

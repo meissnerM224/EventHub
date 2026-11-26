@@ -69,6 +69,8 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     public RecordingNotificationSender Notifications =>
         Services.GetRequiredService<RecordingNotificationSender>();
 
+    public ShiftableTimeProvider Clock => Services.GetRequiredService<ShiftableTimeProvider>();
+
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -77,6 +79,10 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             services.RemoveAll<INotificationSender>();
             services.AddSingleton<RecordingNotificationSender>();
             services.AddScoped<INotificationSender>(sp => sp.GetRequiredService<RecordingNotificationSender>());
+
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<ShiftableTimeProvider>();
+            services.AddSingleton<TimeProvider>(sp => sp.GetRequiredService<ShiftableTimeProvider>());
         });
     }
 

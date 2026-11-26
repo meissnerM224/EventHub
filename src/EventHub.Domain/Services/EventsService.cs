@@ -10,7 +10,8 @@ public class EventsService(
     IEventsRepository repository,
     IBookingRepository bookingRepository,
     ITransactionRunner transactionRunner,
-    ICacheService cache) : IEventsService
+    ICacheService cache,
+    TimeProvider timeProvider) : IEventsService
 {
     private static string? NormalizeImageUrl(string? imageUrl)
     {
@@ -78,7 +79,7 @@ public class EventsService(
         if (doorsOpenAtData > startAtData) throw new BusinessRuleException(ErrorCodes.EventInvalidDates, "DoorsOpenAt must not be after StartAt.");
 
 
-        if (startAtData <= DateTimeOffset.UtcNow) throw new BusinessRuleException(ErrorCodes.EventInvalidDates, "StartAt must be in the future.");
+        if (startAtData <= timeProvider.GetUtcNow()) throw new BusinessRuleException(ErrorCodes.EventInvalidDates, "StartAt must be in the future.");
         var normalizedImageUrl = NormalizeImageUrl(imageUrl);
 
         var newEvent = new Event
@@ -139,7 +140,7 @@ public class EventsService(
             var category = await repository.GetCategoryById(categoryId);
             if (category is null) throw new NotFoundException(ErrorCodes.CategoryNotFound, "Category", categoryId);
             if (doorsOpenAtData > startAtData) throw new BusinessRuleException(ErrorCodes.EventInvalidDates, "DoorsOpenAt must not be after StartAt.");
-            if (startAtData <= DateTimeOffset.UtcNow) throw new BusinessRuleException(ErrorCodes.EventInvalidDates, "StartAt must be in the future.");
+            if (startAtData <= timeProvider.GetUtcNow()) throw new BusinessRuleException(ErrorCodes.EventInvalidDates, "StartAt must be in the future.");
             var confirmed = await bookingRepository.CountConfirmedAsync(eventId);
             if (maxParticipants < confirmed)
                 throw new BusinessRuleException(ErrorCodes.EventCapacityTooLow,
@@ -170,7 +171,7 @@ public class EventsService(
         if (existing.OrganizerId != currentUser) throw new ForbiddenException(ErrorCodes.EventNotOwner, "Permission denied");
         if (existing.IsCancelled) return;
         existing.IsCancelled = true;
-        existing.CancelledAt = DateTimeOffset.UtcNow;
+        existing.CancelledAt = timeProvider.GetUtcNow();
         await repository.SaveChangesAsync();
 
         await cache.RemoveByPrefixAsync(EventCacheKeys.ListPrefix);
