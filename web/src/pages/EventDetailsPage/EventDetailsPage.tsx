@@ -34,7 +34,7 @@ function EventDetailsPage() {
   return (
     <div className={styles.container}>
       {event.eventImageUrl && (
-        <img src={event.eventImageUrl} alt="Event image" />
+        <img src={event.eventImageUrl} alt="" className={styles.image} />
       )}
       <div className={styles.body}>
         <h3>{event.eventTitle}</h3>

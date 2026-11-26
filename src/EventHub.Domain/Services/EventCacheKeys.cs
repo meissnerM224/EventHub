@@ -10,7 +10,7 @@ internal static class EventCacheKeys
         $"{ListPrefix}c={f.CategoryId}:l={f.Location?.ToLowerInvariant()}:f={f.From:o}:t={f.To:o}";
 
     public static string Detail(Guid id) => $"events:details:{id}";
-    
-    public const  string Categories = "categories:list";
-    
+
+    public const string Categories = "categories:list";
+
 }

@@ -12,8 +12,8 @@ body {
   color: var(--c-ink);
   font-family:
     system-ui,
-    -apple-syste,
-    "Sego UI",
+    -apple-system,
+    "Segoe UI",
     sans-serif;
   line-height: 1;
 }

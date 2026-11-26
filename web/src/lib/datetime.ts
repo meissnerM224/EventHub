@@ -2,5 +2,5 @@
 // the user's local time. new Date() reads it exactly that way, and
 // toISOString() turns it into UTC for the backend.
 export function localInputToUtcIso(value: string): string {
-    return new Date(value).toISOString();
+  return new Date(value).toISOString();
 }

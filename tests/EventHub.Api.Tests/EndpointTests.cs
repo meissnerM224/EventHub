@@ -16,9 +16,9 @@ namespace EventHub.Api.Tests;
 public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 {
     // Helper
-    
+
     private sealed record CategoryResponse(int Id, string Name);
-    
+
     private async Task<HttpClient> CreateParticipantClientAsync()
     {
         var client = factory.CreateHttpsClient();
@@ -775,7 +775,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
-    
+
     [Fact]
     public async Task GetCategories_ReturnsSeededCategories()
     {

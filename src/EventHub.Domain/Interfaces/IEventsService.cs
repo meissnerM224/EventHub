@@ -33,6 +33,6 @@ public interface IEventsService
     );
 
     Task CancelEventAsync(Guid eventId, Guid currentUserId);
-    
+
     Task<List<CategorySummary>> GetCategoriesAsync();
 }

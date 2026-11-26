@@ -42,139 +42,139 @@ export default function CreateNewEvent() {
     const text = (name: string) => String(form.get(name) ?? "").trim();
 
     createEvent.mutate(
-        {
-          event: {
-            title: text("title"),
-            description: text("description"),
-            location: text("location"),
-            startAt: localInputToUtcIso(text("startAt")),
-            doorsOpenAt: localInputToUtcIso(text("doorsOpenAt")),
-            maxParticipants: Number(form.get("maxParticipants")),
-            categoryId: Number(form.get("categoryId")),
-          },
-          imageFile,
+      {
+        event: {
+          title: text("title"),
+          description: text("description"),
+          location: text("location"),
+          startAt: localInputToUtcIso(text("startAt")),
+          doorsOpenAt: localInputToUtcIso(text("doorsOpenAt")),
+          maxParticipants: Number(form.get("maxParticipants")),
+          categoryId: Number(form.get("categoryId")),
         },
-        { onSuccess: (created) => navigate(`/events/${created.id}`) },
+        imageFile,
+      },
+      { onSuccess: (created) => navigate(`/events/${created.id}`) },
     );
   }
 
   return (
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <form className={styles.form} onSubmit={handleSubmit}>
-            <div className={styles.header}>
-              <h1>{intl.formatMessage({ id: "createEvent.title" })}</h1>
-              <p>{intl.formatMessage({ id: "createEvent.subtitle" })}</p>
-            </div>
+    <div className={styles.page}>
+      <div className={styles.container}>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.header}>
+            <h1>{intl.formatMessage({ id: "createEvent.title" })}</h1>
+            <p>{intl.formatMessage({ id: "createEvent.subtitle" })}</p>
+          </div>
 
-            {isError && (
-                <Banner
-                    messageId="createEvent.category.loadError"
-                    onRetry={refetch}
-                    retrying={isFetching}
-                />
-            )}
+          {isError && (
+            <Banner
+              messageId="createEvent.category.loadError"
+              onRetry={refetch}
+              retrying={isFetching}
+            />
+          )}
 
+          <label className={styles.field}>
+            {intl.formatMessage({ id: "createEvent.eventTitle" })}
+            <input name="title" required maxLength={200} />
+          </label>
+
+          <label className={styles.field}>
+            {intl.formatMessage({ id: "createEvent.description" })}
+            <textarea name="description" required maxLength={500} />
+          </label>
+
+          <div className={styles.row}>
             <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.eventTitle" })}
-              <input name="title" required maxLength={200} />
+              {intl.formatMessage({ id: "createEvent.location" })}
+              <input name="location" required />
             </label>
-
             <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.description" })}
-              <textarea name="description" required maxLength={500} />
-            </label>
-
-            <div className={styles.row}>
-              <label className={styles.field}>
-                {intl.formatMessage({ id: "createEvent.location" })}
-                <input name="location" required />
-              </label>
-              <label className={styles.field}>
-                {intl.formatMessage({ id: "createEvent.category" })}
-                <select
-                    name="categoryId"
-                    required
-                    defaultValue=""
-                    disabled={isPending || isError}
-                >
-                  <option value="" disabled>
-                    {intl.formatMessage({
-                      id: isPending
-                          ? "common.loading"
-                          : "createEvent.category.placeholder",
-                    })}
-                  </option>
-                  {categories?.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className={styles.row}>
-              <label className={styles.field}>
-                {intl.formatMessage({ id: "createEvent.startsAt" })}
-                <input name="startAt" type="datetime-local" required />
-              </label>
-              <label className={styles.field}>
-                {intl.formatMessage({ id: "createEvent.doorsOpenAt" })}
-                <input name="doorsOpenAt" type="datetime-local" required />
-              </label>
-            </div>
-
-            <div className={styles.row}>
-              <label className={styles.field}>
-                {intl.formatMessage({ id: "createEvent.maxParticipants" })}
-                <input name="maxParticipants" type="number" min={1} required />
-              </label>
-              <label className={styles.field}>
-                {intl.formatMessage({ id: "createEvent.image" })}
-                <input
-                    name="image"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    aria-describedby="image-hint"
-                    onChange={handleImageChange}
-                />
-                <small id="image-hint" className={styles.hint}>
-                  {intl.formatMessage({ id: "createEvent.image.hint" })}
-                </small>
-              </label>
-            </div>
-
-            {previewUrl && (
-                <img
-                    src={previewUrl}
-                    alt={intl.formatMessage({ id: "createEvent.image.preview" })}
-                    className={styles.preview}
-                />
-            )}
-
-            {createEvent.isError && (
-                <Banner messageId={errorMessageId(createEvent.error)} />
-            )}
-
-            <div className={styles.actions}>
-              <Link to="/" className={styles.secondary}>
-                {intl.formatMessage({ id: "createEvent.cancel" })}
-              </Link>
-              <button
-                  type="submit"
-                  className={styles.submit}
-                  disabled={createEvent.isPending}
+              {intl.formatMessage({ id: "createEvent.category" })}
+              <select
+                name="categoryId"
+                required
+                defaultValue=""
+                disabled={isPending || isError}
               >
-                {intl.formatMessage({
-                  id: createEvent.isPending
-                      ? "createEvent.submitting"
-                      : "createEvent.submit",
-                })}
-              </button>
-            </div>
-          </form>
-        </div>
+                <option value="" disabled>
+                  {intl.formatMessage({
+                    id: isPending
+                      ? "common.loading"
+                      : "createEvent.category.placeholder",
+                  })}
+                </option>
+                {categories?.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.field}>
+              {intl.formatMessage({ id: "createEvent.startsAt" })}
+              <input name="startAt" type="datetime-local" required />
+            </label>
+            <label className={styles.field}>
+              {intl.formatMessage({ id: "createEvent.doorsOpenAt" })}
+              <input name="doorsOpenAt" type="datetime-local" required />
+            </label>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.field}>
+              {intl.formatMessage({ id: "createEvent.maxParticipants" })}
+              <input name="maxParticipants" type="number" min={1} required />
+            </label>
+            <label className={styles.field}>
+              {intl.formatMessage({ id: "createEvent.image" })}
+              <input
+                name="image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-describedby="image-hint"
+                onChange={handleImageChange}
+              />
+              <small id="image-hint" className={styles.hint}>
+                {intl.formatMessage({ id: "createEvent.image.hint" })}
+              </small>
+            </label>
+          </div>
+
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt={intl.formatMessage({ id: "createEvent.image.preview" })}
+              className={styles.preview}
+            />
+          )}
+
+          {createEvent.isError && (
+            <Banner messageId={errorMessageId(createEvent.error)} />
+          )}
+
+          <div className={styles.actions}>
+            <Link to="/" className={styles.secondary}>
+              {intl.formatMessage({ id: "createEvent.cancel" })}
+            </Link>
+            <button
+              type="submit"
+              className={styles.submit}
+              disabled={createEvent.isPending}
+            >
+              {intl.formatMessage({
+                id: createEvent.isPending
+                  ? "createEvent.submitting"
+                  : "createEvent.submit",
+              })}
+            </button>
+          </div>
+        </form>
       </div>
+    </div>
   );
 }

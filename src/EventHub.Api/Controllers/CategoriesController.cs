@@ -4,6 +4,7 @@ using EventHub.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Controllers;
+
 [ApiController]
 [Route("api/categories")]
 public class CategoriesController(IEventsService service) : ControllerBase
