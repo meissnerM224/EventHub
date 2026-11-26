@@ -138,3 +138,10 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.preview {
+  width: 100%;
+  max-height: 16rem;
+  object-fit: cover;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-button);
+}

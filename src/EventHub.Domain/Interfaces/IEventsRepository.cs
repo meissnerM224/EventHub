@@ -8,6 +8,7 @@ public interface IEventsRepository
     Task<List<EventSummary>> GetAllAsync(EventFilter? filter = null);
     Task<EventDetail?> GetEventByIdAsync(Guid eventId);
 
+    Task<List<CategorySummary>> GetCategoriesAsync();
 
     Task<bool> OrganizerExistsAsync(Guid organizerId);
 

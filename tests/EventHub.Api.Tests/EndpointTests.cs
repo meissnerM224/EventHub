@@ -16,6 +16,9 @@ namespace EventHub.Api.Tests;
 public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 {
     // Helper
+    
+    private sealed record CategoryResponse(int Id, string Name);
+    
     private async Task<HttpClient> CreateParticipantClientAsync()
     {
         var client = factory.CreateHttpsClient();
@@ -742,4 +745,44 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         Assert.Null(detail!.EventImageUrl);
     }
 
+    private sealed record MyBookingResponse(Guid EventId, string EventTitle);
+
+    [Fact]
+    public async Task GetMyBookings_ReturnsOnlyOwnConfirmedBookings()
+    {
+        var kept = await CreateEventAsync("Mine Kept");
+        var cancelled = await CreateEventAsync("Mine Cancelled");
+        var foreign = await CreateEventAsync("Someone Else's");
+
+        var me = await CreateParticipantClientAsync();
+        var other = await CreateParticipantClientAsync();
+        (await me.PostAsync($"/api/events/{kept}/bookings", content: null)).EnsureSuccessStatusCode();
+        (await me.PostAsync($"/api/events/{cancelled}/bookings", content: null)).EnsureSuccessStatusCode();
+        (await me.DeleteAsync($"/api/events/{cancelled}/bookings/me")).EnsureSuccessStatusCode();
+        (await other.PostAsync($"/api/events/{foreign}/bookings", content: null)).EnsureSuccessStatusCode();
+
+        var bookings = await me.GetFromJsonAsync<List<MyBookingResponse>>("/api/me/bookings");
+
+        var booking = Assert.Single(bookings!);
+        Assert.Equal(kept, booking.EventId);
+        Assert.Equal("Mine Kept", booking.EventTitle);
+    }
+
+    [Fact]
+    public async Task GetMyBookings_ReturnsUnauthorized_WhenNotLoggedIn()
+    {
+        var response = await factory.CreateClient().GetAsync("/api/me/bookings");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+    
+    [Fact]
+    public async Task GetCategories_ReturnsSeededCategories()
+    {
+        var categories = await factory.CreateClient()
+            .GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
+
+        Assert.Contains(categories!, c => c is { Id: 1, Name: "Konzert" });
+        Assert.Contains(categories!, c => c is { Id: 2, Name: "Workshop" });
+    }
 }

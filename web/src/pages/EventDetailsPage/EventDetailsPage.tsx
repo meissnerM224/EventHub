@@ -6,6 +6,8 @@ import { getEventById } from "../../api/events.ts";
 import Spinner from "../../components/Spinner/Spinner.tsx";
 import ErrorMessage from "../../components/ErrorMessage/ErrorMessage.tsx";
 import { useIntl } from "react-intl";
+import BookingBox from "../../components/BookingBox/BookingBox.tsx";
+
 function EventDetailsPage() {
   const intl = useIntl();
   const { id } = useParams();
@@ -44,18 +46,13 @@ function EventDetailsPage() {
           {intl.formatMessage({ id: "common.location" })}: {event.eventLocation}
         </p>
         <p>
-          {" "}
           {intl.formatMessage({ id: "event.availableSpots" })}:{" "}
           {event.availableSpots}
         </p>
         <p>
           {intl.formatMessage({ id: "event.category" })}: {event.categoryName}
         </p>
-        <button disabled={event.availableSpots <= 0}>
-          {intl.formatMessage({
-            id: event.availableSpots > 0 ? "event.booking" : "event.soldOut",
-          })}
-        </button>
+        <BookingBox event={event} />
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ export class ApiError extends Error {
 }
 
 // Helper
-async function parseJson<T>(
+export async function parseJson<T>(
   response: Response,
   parse: (data: unknown) => T,
 ): Promise<T> {

@@ -176,4 +176,14 @@ public class EventsService(
         await cache.RemoveByPrefixAsync(EventCacheKeys.ListPrefix);
         await cache.RemoveAsync(EventCacheKeys.Detail(eventId));
     }
+
+    public async Task<List<CategorySummary>> GetCategoriesAsync()
+    {
+        var cached = await cache.GetAsync<List<CategorySummary>>(EventCacheKeys.Categories);
+        if (cached is not null) return cached;
+
+        var categories = await repository.GetCategoriesAsync();
+        await cache.SetAsync(EventCacheKeys.Categories, categories, TimeSpan.FromHours(1));
+        return categories;
+    }
 }
