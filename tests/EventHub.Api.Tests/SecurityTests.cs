@@ -164,7 +164,9 @@ public sealed class SecurityTests(EventHubWebApplicationFactory factory)
         var email = $"sec-{Guid.NewGuid():N}@test.de";
         var response = await factory.CreateHttpsClient().PostAsJsonAsync("/api/auth/register", new
         {
-            email, password = EventHubWebApplicationFactory.TestPassword, displayName = "Security Test",
+            email,
+            password = EventHubWebApplicationFactory.TestPassword,
+            displayName = "Security Test",
         });
         response.EnsureSuccessStatusCode();
         return email;

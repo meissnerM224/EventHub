@@ -132,10 +132,10 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
         // The pre-check in the service handles the normal case. This catches the race:
         // two requests with the same name both pass the check, the index rejects the second.
         catch (DbUpdateException e) when (e.InnerException is PostgresException
-                                          {
-                                              SqlState: PostgresErrorCodes.UniqueViolation,
-                                              ConstraintName: EventHubDbContext.CategoryNameIndex,
-                                          })
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: EventHubDbContext.CategoryNameIndex,
+        })
         {
             dbContext.Entry(category).State = EntityState.Detached;
             throw new AlreadyExistException(ErrorCodes.CategoryAlreadyExists,
