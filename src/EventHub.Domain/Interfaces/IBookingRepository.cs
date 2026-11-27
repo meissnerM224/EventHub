@@ -11,6 +11,7 @@ public interface IBookingRepository
     Task AddAsync(Booking booking);
     Task<Booking?> GetConfirmedBookingByIdAsync(Guid eventId, Guid userId);
     Task<bool> HasCancelledBookingAsync(Guid eventId, Guid userId);
+    Task<IReadOnlyList<MyBooking>> GetConfirmedByUserAsync(Guid userId);
 
 
     Task SaveAsync();

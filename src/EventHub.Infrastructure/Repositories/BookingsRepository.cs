@@ -47,6 +47,23 @@ public class BookingsRepository(EventHubDbContext context) : IBookingRepository
             b.EventId == eventId && b.UserId == userId && b.Status == BookingStatus.Cancelled);
     }
 
+    public async Task<IReadOnlyList<MyBooking>> GetConfirmedByUserAsync(Guid userId)
+    {
+        return await context.Bookings
+            .AsNoTracking()
+            .Where(b => b.UserId == userId && b.Status == BookingStatus.Confirmed)
+            .OrderBy(b => b.Event.StartsAt)
+            .Select(b => new MyBooking
+            {
+                BookingId = b.Id,
+                EventId = b.EventId,
+                EventTitle = b.Event.Title,
+                EventStartsAt = b.Event.StartsAt,
+                IsCancelled = b.Event.IsCancelled,
+                BookedAt = b.BookedAt
+            })
+            .ToListAsync();
+    }
 
     public Task SaveAsync() => context.SaveChangesAsync();
 

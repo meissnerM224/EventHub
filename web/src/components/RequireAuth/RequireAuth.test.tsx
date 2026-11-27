@@ -67,7 +67,7 @@ describe("RequireAuth", () => {
     renderProtected();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      t["common.error"],
+      t["error.status.server"],
     );
     expect(screen.queryByText("Loginseite")).not.toBeInTheDocument();
   });

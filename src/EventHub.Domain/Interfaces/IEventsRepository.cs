@@ -8,6 +8,7 @@ public interface IEventsRepository
     Task<List<EventSummary>> GetAllAsync(EventFilter? filter = null);
     Task<EventDetail?> GetEventByIdAsync(Guid eventId);
 
+    Task<List<CategorySummary>> GetCategoriesAsync();
 
     Task<bool> OrganizerExistsAsync(Guid organizerId);
 
@@ -21,4 +22,9 @@ public interface IEventsRepository
     Task SaveChangesAsync();
 
     Task<Event?> GetEventEntityForUpdateAsync(Guid id);
+
+    Task<bool> CategoryNameExistsAsync(string name);
+
+    Task<Category> CreateCategoryAsync(Category category);
+
 }

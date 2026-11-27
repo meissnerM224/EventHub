@@ -1,3 +1,5 @@
+using EventHub.Domain.Models;
+
 namespace EventHub.Domain.Interfaces;
 
 /// <summary>
@@ -13,4 +15,7 @@ public interface IUserRoleService
 
     /// <exception cref="Exceptions.NotFoundException">User does not exist.</exception>
     Task RevokeOrganizerAsync(Guid userId);
+
+    Task<IReadOnlyList<AdminUserSummary>> GetUsersAsync();
+
 }

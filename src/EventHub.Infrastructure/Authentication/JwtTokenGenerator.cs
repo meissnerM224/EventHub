@@ -9,6 +9,9 @@ namespace EventHub.Infrastructure.Authentication;
 
 public class JwtTokenGenerator(IOptions<JwtOptions> options) : IJwtTokenGenerator
 {
+    // Changes on logout and role changes; a token with an old stamp is rejected (see Program.cs).
+    public const string SecurityStampClaim = "sstamp";
+
     private readonly JwtOptions _options = options.Value;
 
     public JwtToken Create(AppUser user, IEnumerable<string> roles)
@@ -20,7 +23,8 @@ public class JwtTokenGenerator(IOptions<JwtOptions> options) : IJwtTokenGenerato
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Name, user.DisplayName)
+            new(ClaimTypes.Name, user.DisplayName),
+            new(SecurityStampClaim, user.SecurityStamp ?? "")
         };
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 

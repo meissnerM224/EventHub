@@ -35,6 +35,13 @@ export const currentUserSchema = z.object({
   expiresAt: z.string(),
 });
 
+export const categorySchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  description: z.string(),
+});
+
 export type EventSummary = z.infer<typeof eventSummarySchema>;
 export type EventDetail = z.infer<typeof eventDetailSchema>;
 export type CurrentUser = z.infer<typeof currentUserSchema>;
+export type Category = z.infer<typeof categorySchema>;

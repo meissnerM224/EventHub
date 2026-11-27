@@ -16,6 +16,9 @@ namespace EventHub.Api.Tests;
 public sealed class EndpointTests(EventHubWebApplicationFactory factory)
 {
     // Helper
+
+    private sealed record CategoryResponse(int Id, string Name);
+
     private async Task<HttpClient> CreateParticipantClientAsync()
     {
         var client = factory.CreateHttpsClient();
@@ -30,7 +33,7 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         return client;
     }
 
-    private static MultipartFormDataContent ImageContent()
+    internal static MultipartFormDataContent ImageContent()
     {
         using var bitmap = new SKBitmap(40, 30);
 
@@ -53,14 +56,15 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         int maxParticipants = 1000,
         int categoryId = 1,
         DateTimeOffset? startAt = null,
-        DateTimeOffset? doorsOpenAt = null)
+        DateTimeOffset? doorsOpenAt = null,
+        string location = "Theater Kassel")
     {
         return new
         {
             title,
             description = "Test description",
             Image = image,
-            location = "Theater Kassel",
+            location,
             startAt = startAt ?? DateTimeOffset.UtcNow.AddHours(2),
             doorsOpenAt = doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
             maxParticipants,
@@ -75,7 +79,8 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         int maxParticipants = 10,
         int categoryId = 1,
         DateTimeOffset? startAt = null,
-        DateTimeOffset? doorsOpenAt = null)
+        DateTimeOffset? doorsOpenAt = null,
+        string location = "Theater Kassel")
     {
         var organizer = await factory.CreateAuthenticatedClientAsync(
             EventHubWebApplicationFactory.OrganizerEmail);
@@ -87,7 +92,8 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
                     maxParticipants: maxParticipants,
                     startAt: startAt ?? DateTimeOffset.UtcNow.AddHours(2),
                     doorsOpenAt: doorsOpenAt ?? DateTimeOffset.UtcNow.AddHours(1),
-                    categoryId: categoryId
+                    categoryId: categoryId,
+                    location: location
                 ));
         if (!response.IsSuccessStatusCode)
         {
@@ -118,6 +124,43 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         Assert.All(events!, e => Assert.Equal(EventHubWebApplicationFactory.FirstCategoryName, e.CategoryName));
         Assert.Contains(events!, e => e.Title == "Cat Filter A");
         Assert.DoesNotContain(events!, e => e.Title == "Cat Filter B");
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByLocation_PartOfTheName()
+    {
+        var town = $"Ort{Guid.NewGuid():N}";
+        await CreateEventAsync("In Town", location: $"Kulturbahnhof {town}");
+        await CreateEventAsync("Elsewhere", location: "Theater Kassel");
+
+        var events = await factory.CreateClient()
+            .GetFromJsonAsync<List<EventSummary>>($"/api/events?location={town}");
+
+        var match = Assert.Single(events!);
+        Assert.Equal("In Town", match.Title);
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByLocation_IgnoringCase()
+    {
+        var town = $"Ort{Guid.NewGuid():N}";
+        await CreateEventAsync("Case Town", location: $"Kulturbahnhof {town}");
+
+        var events = await factory.CreateClient()
+            .GetFromJsonAsync<List<EventSummary>>($"/api/events?location={town.ToLowerInvariant()}");
+
+        Assert.Single(events!, e => e.Title == "Case Town");
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByLocation_TreatsWildcardsAsText()
+    {
+        // A "%" must not turn into "match everything" – so there has to be something to match.
+        await CreateEventAsync("Wildcard Victim", location: $"Ort{Guid.NewGuid():N}");
+
+        var events = await factory.CreateClient().GetFromJsonAsync<List<EventSummary>>("/api/events?location=%25");
+
+        Assert.DoesNotContain(events!, e => e.Title == "Wildcard Victim");
     }
 
     [Fact]
@@ -742,4 +785,44 @@ public sealed class EndpointTests(EventHubWebApplicationFactory factory)
         Assert.Null(detail!.EventImageUrl);
     }
 
+    private sealed record MyBookingResponse(Guid EventId, string EventTitle);
+
+    [Fact]
+    public async Task GetMyBookings_ReturnsOnlyOwnConfirmedBookings()
+    {
+        var kept = await CreateEventAsync("Mine Kept");
+        var cancelled = await CreateEventAsync("Mine Cancelled");
+        var foreign = await CreateEventAsync("Someone Else's");
+
+        var me = await CreateParticipantClientAsync();
+        var other = await CreateParticipantClientAsync();
+        (await me.PostAsync($"/api/events/{kept}/bookings", content: null)).EnsureSuccessStatusCode();
+        (await me.PostAsync($"/api/events/{cancelled}/bookings", content: null)).EnsureSuccessStatusCode();
+        (await me.DeleteAsync($"/api/events/{cancelled}/bookings/me")).EnsureSuccessStatusCode();
+        (await other.PostAsync($"/api/events/{foreign}/bookings", content: null)).EnsureSuccessStatusCode();
+
+        var bookings = await me.GetFromJsonAsync<List<MyBookingResponse>>("/api/me/bookings");
+
+        var booking = Assert.Single(bookings!);
+        Assert.Equal(kept, booking.EventId);
+        Assert.Equal("Mine Kept", booking.EventTitle);
+    }
+
+    [Fact]
+    public async Task GetMyBookings_ReturnsUnauthorized_WhenNotLoggedIn()
+    {
+        var response = await factory.CreateClient().GetAsync("/api/me/bookings");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCategories_ReturnsSeededCategories()
+    {
+        var categories = await factory.CreateClient()
+            .GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
+
+        Assert.Contains(categories!, c => c is { Id: 1, Name: "Konzert" });
+        Assert.Contains(categories!, c => c is { Id: 2, Name: "Workshop" });
+    }
 }

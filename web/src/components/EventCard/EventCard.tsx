@@ -28,7 +28,7 @@ export default function EventCard({
   return (
     <Link to={`/events/${id}`} className={styles.link}>
       <div className={styles.container}>
-        {imageUrl && <img src={imageUrl} alt="" />}
+        {imageUrl && <img src={imageUrl} alt="" className={styles.image} />}
         <div className={styles.body}>
           <h3>{title}</h3>
           <p>

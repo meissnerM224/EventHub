@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { ButtonLink } from "../../components/Button/Button";
 import { useIntl } from "react-intl";
 import styles from "./NotFoundPage.module.css";
 
@@ -14,9 +14,9 @@ export default function NotFoundPage() {
           <p className={styles.message}>
             {intl.formatMessage({ id: "notFound.message" })}
           </p>
-          <Link to="/" className={styles.cta}>
+          <ButtonLink to="/">
             {intl.formatMessage({ id: "notFound.back" })}
-          </Link>
+          </ButtonLink>
         </div>
       </div>
     </div>

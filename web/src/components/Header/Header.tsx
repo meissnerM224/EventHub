@@ -1,8 +1,9 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { useLogout, useMe } from "../../api/auth";
-import { isOrganizer } from "../../api/auth";
 import styles from "./Header.module.css";
+import { Button, ButtonLink } from "../Button/Button";
+import { isAdmin, isOrganizer } from "../../api/auth";
 
 export default function Header() {
   const intl = useIntl();
@@ -36,7 +37,18 @@ export default function Header() {
               {intl.formatMessage({ id: "nav.createEvent" })}
             </NavLink>
           )}
+          {isAdmin(me) && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                isActive ? styles.active : styles.link
+              }
+            >
+              {intl.formatMessage({ id: "nav.admin" })}
+            </NavLink>
+          )}
         </nav>
+
         {/*<></>*/}
         <div className={styles.account}>
           {isPending ? null : me ? (
@@ -49,21 +61,19 @@ export default function Header() {
               >
                 {me.displayName}
               </NavLink>
-              <button
-                type="button"
-                className={styles.cta}
+              <Button
                 disabled={logout.isPending}
                 onClick={() =>
                   logout.mutate(undefined, { onSuccess: () => navigate("/") })
                 }
               >
                 {intl.formatMessage({ id: "common.logout" })}
-              </button>
+              </Button>
             </>
           ) : (
-            <Link to="/login" className={styles.cta}>
+            <ButtonLink to="/login">
               {intl.formatMessage({ id: "common.login" })}
-            </Link>
+            </ButtonLink>
           )}
         </div>
       </div>

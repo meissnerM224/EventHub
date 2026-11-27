@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using EventHub.Api.Models;
 using EventHub.Domain.Authorization;
 using EventHub.Domain.Messaging;
 using EventHub.Domain.Models;
@@ -68,6 +69,79 @@ public sealed class OutboxTests(EventHubWebApplicationFactory factory)
         Assert.NotNull(sent);
     }
 
+
+    // ── Failure path ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Worker_RetriesAfterFailure_AndClearsTheError()
+    {
+        var eventId = await CreateEventAsync("Outbox Retry");
+        var (participant, userId) = await CreateParticipantAsync();
+        factory.Notifications.FailFor(userId, times: 2);
+
+        (await participant.PostAsync($"/api/events/{eventId}/bookings", null)).EnsureSuccessStatusCode();
+
+        var processed = await WaitForAsync(async () =>
+            (await OutboxFor(userId)) is { ProcessedAt: not null } m ? m : null);
+
+        Assert.NotNull(processed);
+        Assert.Equal(3, processed.Attempts);
+        Assert.Null(processed.LastError);
+        Assert.Single(factory.Notifications.Sent, m => m.UserId == userId);
+    }
+
+    [Fact]
+    public async Task Worker_StopsAfterMaxAttempts_KeepsTheError_AndDoesNotBlockOthers()
+    {
+        var eventId = await CreateEventAsync("Outbox Give Up");
+        var (failing, failingUser) = await CreateParticipantAsync();
+        var (healthy, healthyUser) = await CreateParticipantAsync();
+        factory.Notifications.FailFor(failingUser);
+
+        (await failing.PostAsync($"/api/events/{eventId}/bookings", null)).EnsureSuccessStatusCode();
+        (await healthy.PostAsync($"/api/events/{eventId}/bookings", null)).EnsureSuccessStatusCode();
+
+        var givenUp = await WaitForAsync(async () =>
+            (await OutboxFor(failingUser)) is { Attempts: MaxAttempts } m ? m : null);
+
+        Assert.NotNull(givenUp);
+        Assert.Null(givenUp.ProcessedAt);
+        Assert.Equal($"Mail server unavailable for {failingUser}", givenUp.LastError);
+
+        // A failing message must not hold up the rest of the batch.
+        Assert.NotNull(await WaitForAsync(() =>
+            Task.FromResult(factory.Notifications.Sent.FirstOrDefault(m => m.UserId == healthyUser))));
+
+        // Several more poll intervals (200 ms): no further attempt after the limit.
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        Assert.Equal(MaxAttempts, factory.Notifications.CallsFor(failingUser));
+        Assert.Equal(MaxAttempts, (await OutboxFor(failingUser))!.Attempts);
+    }
+
+    // OutboxOptions.MaxAttempts default – the test factory does not override it.
+    private const int MaxAttempts = 5;
+
+    private async Task<OutboxMessage?> OutboxFor(Guid userId) =>
+        (await ReadOutboxAsync()).SingleOrDefault(m => m.Payload.Contains(userId.ToString()));
+
+    private async Task<(HttpClient Client, Guid UserId)> CreateParticipantAsync()
+    {
+        var client = await CreateParticipantClientAsync();
+        var me = await client.GetFromJsonAsync<CurrentUser>("/api/auth/me");
+        return (client, me!.UserId);
+    }
+
+    private static async Task<T?> WaitForAsync<T>(Func<Task<T?>> probe) where T : class
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await probe() is { } result) return result;
+            await Task.Delay(50);
+        }
+
+        return null;
+    }
 
     private async Task<List<OutboxMessage>> ReadOutboxAsync()
     {

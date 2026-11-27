@@ -39,3 +39,12 @@
   background: var(--c-border);
   color: var(--c-ink-muted);
 }
+
+/* Same frame for every image: the box sets the shape, the image fills it.
+   Wider images lose a bit left/right, portrait images lose top/bottom. */
+.image {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  object-position: center 30%;
+}
