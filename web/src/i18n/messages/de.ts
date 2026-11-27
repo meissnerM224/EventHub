@@ -105,6 +105,11 @@ export const de = {
     "Zu viele falsche Passwörter – das Konto ist für 15 Minuten gesperrt",
   "error.file.too_many_pixels":
     "Das Bild hat zu viele Pixel (maximal 40 Megapixel)",
+  "error.status.unauthorized": "Bitte melde dich an",
+  "error.status.forbidden": "Dafür fehlt dir die Berechtigung",
+  "error.status.not_found": "Nicht gefunden",
+  "error.status.too_large": "Die Datei ist zu groß (maximal 5 MB)",
+  "error.status.server": "Serverfehler, bitte versuche es später noch einmal",
   "notFound.back": "Zur Startseite",
   "notFound.message": "Die Seite existiert nicht oder wurde verschoben.",
   "notFound.title": "Seite nicht gefunden",

@@ -98,6 +98,11 @@ export const en: Record<MessageId, string> = {
     "Too many wrong passwords – the account is locked for 15 minutes",
   "error.file.too_many_pixels":
     "The image has too many pixels (40 megapixels max)",
+  "error.status.unauthorized": "Please sign in",
+  "error.status.forbidden": "You don't have permission to do this",
+  "error.status.not_found": "Not found",
+  "error.status.too_large": "The file is too large (5 MB max)",
+  "error.status.server": "Server error, please try again later",
   "event.availableSpots": "Available spots",
   "event.booking": "Book",
   "event.category": "Category",

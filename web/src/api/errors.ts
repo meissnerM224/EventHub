@@ -35,6 +35,14 @@ function statusMessage(status: number): MessageId {
   if (status === 413) return "error.status.too_large";
   if (status === 429) return "error.status.too_many_requests";
   if (status >= 500) return "error.status.server";
+// For errors without a domain code (e.g. 403 from [Authorize], 413 from the upload size limit,
+// a 500 or a proxy error page) the status still says more than "an error occurred".
+function statusMessage(status: number): MessageId {
+  if (status === 401) return "error.status.unauthorized";
+  if (status === 403) return "error.status.forbidden";
+  if (status === 404) return "error.status.not_found";
+  if (status === 413) return "error.status.too_large";
+  if (status >= 500) return "error.status.server";
   return "common.error";
 }
 

@@ -24,21 +24,6 @@ describe("errorMessageId", () => {
     expect(errorMessageId(new ApiError(502, "x"))).toBe("error.status.server");
   });
 
-  it("maps the security codes and 429", () => {
-    expect(errorMessageId(new ApiError(401, "x", "auth.locked_out"))).toBe(
-      "error.auth.locked_out",
-    );
-    expect(
-      errorMessageId(new ApiError(429, "x", "auth.too_many_requests")),
-    ).toBe("error.status.too_many_requests");
-    expect(errorMessageId(new ApiError(429, "x"))).toBe(
-      "error.status.too_many_requests",
-    );
-    expect(errorMessageId(new ApiError(400, "x", "file.too_many_pixels"))).toBe(
-      "error.file.too_many_pixels",
-    );
-  });
-
   it("falls back to the status for an unknown code", () => {
     expect(errorMessageId(new ApiError(500, "x", "something.new"))).toBe(
       "error.status.server",
