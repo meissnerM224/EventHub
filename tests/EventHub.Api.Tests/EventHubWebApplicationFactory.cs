@@ -106,6 +106,8 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             ["ConnectionStrings__Default"] = _postgres.GetConnectionString(),
             ["ConnectionStrings__Redis"] = _redis.GetConnectionString(),
             ["Jwt__Key"] = TestJwtKey,
+            // All tests share one client IP; SecurityTests checks the real limit on its own host.
+            ["RateLimiting__AuthPermitLimit"] = "100000",
             ["Jwt__Issuer"] = "EventHub.Tests",
             ["Jwt__Audience"] = "EventHub.Tests",
             ["Storage__Endpoint"] = $"http://{_garage.Hostname}:{_garage.GetMappedPublicPort(3900)}",

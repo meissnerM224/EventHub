@@ -15,10 +15,14 @@ public sealed class UploadController(IImageStorage storage) : ControllerBase
 {
     private const int MaxEdge = 1600;
 
+    // 40 MP, e.g. 8000 × 5000. A few MB of compressed PNG can claim far more pixels than that,
+    // and SKBitmap.Decode would allocate width × height × 4 bytes before anything is checked.
+    private const long MaxPixels = 40_000_000;
+
     [HttpPost("images")]
     [Authorize(Roles = RoleName.Organizer)]
     [RequestSizeLimit(5 * 1024 * 1024)]
-    [ProducesResponseType<string>(StatusCodes.Status200OK)]
+    [ProducesResponseType<UploadResult>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
@@ -28,7 +32,13 @@ public sealed class UploadController(IImageStorage storage) : ControllerBase
     {
         if (file is null || file.Length == 0) throw new BusinessRuleException(ErrorCodes.FileMissing, "No file was provided");
         await using var input = file.OpenReadStream();
-        using var decoded = SKBitmap.Decode(input);
+        // The codec only reads the header – the size is known before any pixel memory is allocated.
+        using var codec = SKCodec.Create(input)
+                          ?? throw new BusinessRuleException(ErrorCodes.FileUnsupported, "The file is not a supported image.");
+        if ((long)codec.Info.Width * codec.Info.Height > MaxPixels)
+            throw new BusinessRuleException(ErrorCodes.FileTooManyPixels,
+                $"The image has more than {MaxPixels / 1_000_000} megapixels.");
+        using var decoded = SKBitmap.Decode(codec);
         if (decoded is null) throw new BusinessRuleException(ErrorCodes.FileUnsupported, "The file is not a supported image.");
         var scale = Math.Min(1.0, (double)MaxEdge / Math.Max(decoded.Width, decoded.Height));
         using var resized = scale < 1.0

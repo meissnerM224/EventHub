@@ -5,6 +5,7 @@ using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EventHub.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace EventHub.Api.Controllers;
 public class AuthenticationController(IAuthService service) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting(AuthRateLimit.Policy)]
     [ProducesResponseType<CurrentUser>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -23,6 +25,7 @@ public class AuthenticationController(IAuthService service) : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting(AuthRateLimit.Policy)]
     [ProducesResponseType<CurrentUser>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<CurrentUser>> Login([FromBody] LoginUser body)
@@ -33,8 +36,10 @@ public class AuthenticationController(IAuthService service) : ControllerBase
 
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout()
     {
+        // Deleting the cookie alone leaves a copied token valid until it expires.
+        if (User.Identity?.IsAuthenticated == true) await service.LogoutAsync(User.GetUserId());
         Response.Cookies.Delete(AuthCookie.Name, AuthCookie.Options());
         return NoContent();
     }

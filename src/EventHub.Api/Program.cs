@@ -75,6 +75,9 @@ try
             options.User.RequireUniqueEmail = true;
             options.Password.RequiredLength = 8;
             options.Password.RequireNonAlphanumeric = false;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            options.Lockout.AllowedForNewUsers = true;
         })
         .AddRoles<IdentityRole<Guid>>()
         .AddEntityFrameworkStores<EventHubDbContext>();
@@ -106,8 +109,25 @@ try
                     }
 
                     return Task.CompletedTask;
-                }
+                },
+                // A valid signature is not enough: after logout or a role change the user's security
+                // stamp is new, and tokens issued before are rejected right away instead of at expiry.
+                OnTokenValidated = async context =>
+                {
+                    var stamp = context.Principal?.FindFirst(JwtTokenGenerator.SecurityStampClaim)?.Value;
+                    var id = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    if (stamp is null || !Guid.TryParse(id, out var userId))
+                    {
+                        context.Fail("Token has no security stamp.");
+                        return;
+                    }
 
+                    var db = context.HttpContext.RequestServices.GetRequiredService<EventHubDbContext>();
+                    var current = await db.Users.Where(u => u.Id == userId)
+                        .Select(u => u.SecurityStamp)
+                        .SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+                    if (current != stamp) context.Fail("Session is no longer valid.");
+                }
             };
         });
     var redisConnection = builder.Configuration.GetConnectionString("Redis");
@@ -124,6 +144,7 @@ try
         };
     });
 
+    builder.Services.AddAuthRateLimit();
     builder.Services.AddExceptionHandler<DomainExceptionHandler>();
     builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
     builder.Services.AddAuthorization();
@@ -150,6 +171,10 @@ try
     });
 
     builder.Services.AddScoped<IImageStorage, S3ImageStorage>();
+    builder.Services.AddScoped<OrphanImageCleaner>();
+    builder.Services.AddHostedService<ImageCleanupWorker>();
+    builder.Services.Configure<ImageCleanupOptions>(
+        builder.Configuration.GetSection(ImageCleanupOptions.SectionName));
 
 
     var app = builder.Build();
@@ -182,10 +207,12 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
+        // API reference only where it is needed – in production it would describe the attack surface.
+        app.MapScalarApiReference();
     }
-    app.MapScalarApiReference();
     app.UseHttpsRedirection();
     app.UseAuthentication();
+    app.UseRateLimiter();
     app.UseAuthorization();
     app.MapControllers();
     app.MapHealthChecks("/health");

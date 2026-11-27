@@ -10,3 +10,8 @@ services:
     image: eventhub-api:local
   api:
     image: eventhub-api:local
+  proxy:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    image: eventhub-web:local

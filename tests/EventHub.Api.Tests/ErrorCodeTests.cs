@@ -264,6 +264,36 @@ public sealed partial class ErrorCodeTests(EventHubWebApplicationFactory factory
     }
 
     [Fact]
+    public async Task Update_ReturnsEventAlreadyExists_WhenItWouldDuplicateAnotherEvent()
+    {
+        var organizer = await OrganizerClientAsync();
+        var startAt = DateTimeOffset.UtcNow.AddDays(7);
+        var original = NewEvent(UniqueTitle("Original"), startAt: startAt, doorsOpenAt: startAt.AddHours(-1));
+        (await organizer.PostAsJsonAsync("/api/events", original)).EnsureSuccessStatusCode();
+        var otherId = await CreateEventAsync(organizer, UniqueTitle("Other"));
+
+        // Same title, location and start as the original – only the id differs.
+        var response = await organizer.PutAsJsonAsync($"/api/events/{otherId}", original);
+
+        await AssertProblem(response, HttpStatusCode.Conflict, ErrorCodes.EventAlreadyExists);
+    }
+
+    [Fact]
+    public async Task Update_Succeeds_WhenAnEventKeepsItsOwnTitleLocationAndStart()
+    {
+        // The duplicate check must exclude the event itself, or every update would be a conflict.
+        var organizer = await OrganizerClientAsync();
+        var startAt = DateTimeOffset.UtcNow.AddDays(7);
+        var payload = NewEvent(UniqueTitle("Self"), startAt: startAt, doorsOpenAt: startAt.AddHours(-1));
+        var created = await organizer.PostAsJsonAsync("/api/events", payload);
+        created.EnsureSuccessStatusCode();
+
+        var response = await organizer.PutAsJsonAsync(created.Headers.Location, payload);
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Book_ReturnsEventCancelled_WhenEventWasCancelled()
     {
         var organizer = await OrganizerClientAsync();

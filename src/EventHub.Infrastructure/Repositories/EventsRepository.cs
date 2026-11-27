@@ -15,8 +15,13 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
     {
         var query = dbContext.Events.Where(e => !e.IsCancelled);
         if (filter?.CategoryId is { } categoryId) query = query.Where(e => e.CategoryId == categoryId);
+        // "kassel" must find "Theater Kassel". ToLower on both sides becomes strpos(lower(), lower()),
+        // so % and _ in the input are plain characters, unlike with ILIKE.
         if (!string.IsNullOrWhiteSpace(filter?.Location))
-            query = query.Where(e => e.Location.Contains(filter.Location));
+        {
+            var location = filter.Location.Trim().ToLower();
+            query = query.Where(e => e.Location.ToLower().Contains(location));
+        }
         if (filter?.From is { } from) query = query.Where(e => e.StartsAt >= from);
         if (filter?.To is { } to) query = query.Where(e => e.StartsAt <= to);
         return await query

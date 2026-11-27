@@ -18,6 +18,8 @@ public class UserRoleService(UserManager<AppUser> userManager, EventHubDbContext
         if (await userManager.IsInRoleAsync(user, RoleName.Organizer)) return;
 
         EnsureSucceeded(await userManager.AddToRoleAsync(user, RoleName.Organizer));
+        // Roles live in the JWT: a new stamp forces a fresh login with the new roles.
+        EnsureSucceeded(await userManager.UpdateSecurityStampAsync(user));
     }
 
     public async Task RevokeOrganizerAsync(Guid userId)
@@ -27,6 +29,8 @@ public class UserRoleService(UserManager<AppUser> userManager, EventHubDbContext
         if (!await userManager.IsInRoleAsync(user, RoleName.Organizer)) return;
 
         EnsureSucceeded(await userManager.RemoveFromRoleAsync(user, RoleName.Organizer));
+        // Without this the old token would keep the Organizer role until it expires.
+        EnsureSucceeded(await userManager.UpdateSecurityStampAsync(user));
     }
 
     public async Task<IReadOnlyList<AdminUserSummary>> GetUsersAsync() =>

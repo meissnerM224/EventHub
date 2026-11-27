@@ -92,6 +92,17 @@ export const en: Record<MessageId, string> = {
   "error.status.not_found": "Not found",
   "error.status.too_large": "The file is too large (5 MB max)",
   "error.status.server": "Server error, please try again later",
+  "error.status.too_many_requests":
+    "Too many attempts – please wait a minute and try again",
+  "error.auth.locked_out":
+    "Too many wrong passwords – the account is locked for 15 minutes",
+  "error.file.too_many_pixels":
+    "The image has too many pixels (40 megapixels max)",
+  "error.status.unauthorized": "Please sign in",
+  "error.status.forbidden": "You don't have permission to do this",
+  "error.status.not_found": "Not found",
+  "error.status.too_large": "The file is too large (5 MB max)",
+  "error.status.server": "Server error, please try again later",
   "event.availableSpots": "Available spots",
   "event.booking": "Book",
   "event.category": "Category",

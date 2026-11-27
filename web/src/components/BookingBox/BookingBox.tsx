@@ -9,11 +9,15 @@ import {
 import { errorMessageId } from "../../api/errors";
 import type { EventDetail } from "../../api/types";
 import type { MessageId } from "../../i18n/locale";
+import { hasStarted } from "../../lib/eventTime";
 import styles from "./BookingBox.module.css";
 import { Button, ButtonLink } from "../Button/Button";
 
 type Props = {
-  event: Pick<EventDetail, "eventId" | "availableSpots" | "isCancelled">;
+  event: Pick<
+    EventDetail,
+    "eventId" | "availableSpots" | "isCancelled" | "eventStartsAt"
+  >;
 };
 
 export default function BookingBox({ event }: Props) {
@@ -31,6 +35,16 @@ export default function BookingBox({ event }: Props) {
     return (
       <div className={`${styles.box} ${styles.warning}`}>
         <p className={styles.text}>{t("error.event.cancelled")}</p>
+      </div>
+    );
+  }
+
+  // Same rule as MyBookingsPage and the backend (event.already_started):
+  // from the start on, neither booking nor cancelling is possible.
+  if (hasStarted(event.eventStartsAt)) {
+    return (
+      <div className={styles.box}>
+        <p className={styles.text}>{t("error.event.already_started")}</p>
       </div>
     );
   }
