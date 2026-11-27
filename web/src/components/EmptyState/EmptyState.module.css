@@ -24,13 +24,3 @@
 .body p {
   margin: 0;
 }
-
-.retry {
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--c-primary);
-  color: var(--c-surface);
-  border: none;
-  border-radius: var(--r-button);
-  font: inherit;
-  cursor: pointer;
-}

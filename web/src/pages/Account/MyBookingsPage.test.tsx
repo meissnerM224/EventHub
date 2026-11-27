@@ -56,6 +56,13 @@ describe("MyBookingsPage", () => {
       await screen.findByRole("link", { name: "Jazzabend" })
     ).closest("li")!;
     expect(screen.getByText(t["error.event.cancelled"])).toBeInTheDocument();
+    // A cancelled event cannot be cancelled again – the backend would answer event.cancelled.
+    const cancelledRow = screen
+      .getByRole("link", { name: "Workshop" })
+      .closest("li")!;
+    expect(
+      within(cancelledRow).queryByRole("button", { name: t["booking.cancel"] }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       within(row).getByRole("button", { name: t["booking.cancel"] }),

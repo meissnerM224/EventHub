@@ -32,13 +32,21 @@ const loggedIn = (bookings: unknown[] = []) =>
     http.get("/api/me/bookings", () => HttpResponse.json(bookings)),
   );
 
-function renderBox(availableSpots = 5, isCancelled = false) {
+const future = "2030-06-15T18:00:00Z";
+
+function renderBox(
+  availableSpots = 5,
+  isCancelled = false,
+  eventStartsAt = future,
+) {
   return renderPage(
     <Routes>
       <Route
         path="/events/:id"
         element={
-          <BookingBox event={{ eventId, availableSpots, isCancelled }} />
+          <BookingBox
+            event={{ eventId, availableSpots, isCancelled, eventStartsAt }}
+          />
         }
       />
       <Route path="/login" element={<p>Loginseite</p>} />
@@ -130,6 +138,17 @@ describe("BookingBox", () => {
     renderBox(5, true);
 
     expect(screen.getByText(t["error.event.cancelled"])).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("shows that the event has started instead of book or cancel", async () => {
+    // Booked user on a running event – the backend would reject both actions.
+    loggedIn([myBooking]);
+    renderBox(5, false, "2020-01-01T18:00:00Z");
+
+    expect(
+      screen.getByText(t["error.event.already_started"]),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

@@ -125,8 +125,7 @@ describe("CreateNewEvent", () => {
       renderForm();
       const user = await fillForm();
       await user.upload(
-        // The label also contains the hint text, so match only the start.
-        screen.getByLabelText(new RegExp(`^${t["createEvent.image"]}`)),
+        screen.getByLabelText(t["createEvent.image"]),
         new File(["x"], "bild.png", { type: "image/png" }),
       );
 
@@ -146,6 +145,58 @@ describe("CreateNewEvent", () => {
         image: "/media/events/abc.webp",
       });
       expect(createdBody?.startAt).toMatch(/Z$/);
+    });
+
+    it("does not upload the same image again when the create is retried", async () => {
+      let uploads = 0;
+      let creates = 0;
+      let retriedBody: Record<string, unknown> | undefined;
+      server.use(
+        categoriesHandler,
+        http.post("/api/uploads/images", () => {
+          uploads++;
+          return HttpResponse.json({ url: `/media/events/${uploads}.webp` });
+        }),
+        http.post("/api/events", async ({ request }) => {
+          creates++;
+          if (creates === 1) {
+            return HttpResponse.json(
+              { status: 400, code: "event.invalid_dates" },
+              { status: 400 },
+            );
+          }
+          retriedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(
+            {
+              id: "44444444-4444-4444-4444-444444444444",
+              title: "Jazzabend",
+              location: "Kiel",
+              categoryName: "Konzert",
+              startsAt: "2030-06-15T18:00:00Z",
+              availableSpots: 50,
+              imageUrl: "/media/events/1.webp",
+            },
+            { status: 201 },
+          );
+        }),
+      );
+      renderForm();
+      const user = await fillForm();
+      await user.upload(
+        screen.getByLabelText(t["createEvent.image"]),
+        new File(["x"], "bild.png", { type: "image/png" }),
+      );
+      const submit = screen.getByRole("button", {
+        name: t["createEvent.submit"],
+      });
+
+      await user.click(submit);
+      await screen.findByRole("alert");
+      await user.click(submit);
+
+      expect(await screen.findByText("Detailseite")).toBeInTheDocument();
+      expect(uploads).toBe(1);
+      expect(retriedBody?.image).toBe("/media/events/1.webp");
     });
 
     it("shows the translated error in a banner", async () => {

@@ -1,9 +1,11 @@
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
+using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using EventHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace EventHub.Infrastructure.Repositories;
 
@@ -13,8 +15,13 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
     {
         var query = dbContext.Events.Where(e => !e.IsCancelled);
         if (filter?.CategoryId is { } categoryId) query = query.Where(e => e.CategoryId == categoryId);
+        // "kassel" must find "Theater Kassel". ToLower on both sides becomes strpos(lower(), lower()),
+        // so % and _ in the input are plain characters, unlike with ILIKE.
         if (!string.IsNullOrWhiteSpace(filter?.Location))
-            query = query.Where(e => e.Location.Contains(filter.Location));
+        {
+            var location = filter.Location.Trim().ToLower();
+            query = query.Where(e => e.Location.ToLower().Contains(location));
+        }
         if (filter?.From is { } from) query = query.Where(e => e.StartsAt >= from);
         if (filter?.To is { } to) query = query.Where(e => e.StartsAt <= to);
         return await query
@@ -111,4 +118,30 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
                 Description = c.Description
             })
             .ToListAsync();
+
+    // Case-insensitive through the column collation (see EventHubDbContext).
+    public Task<bool> CategoryNameExistsAsync(string name) => dbContext.Categories.AnyAsync(c => c.Name == name);
+
+    public async Task<Category> CreateCategoryAsync(Category category)
+    {
+        dbContext.Categories.Add(category);
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        // The pre-check in the service handles the normal case. This catches the race:
+        // two requests with the same name both pass the check, the index rejects the second.
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: EventHubDbContext.CategoryNameIndex,
+        })
+        {
+            dbContext.Entry(category).State = EntityState.Detached;
+            throw new AlreadyExistException(ErrorCodes.CategoryAlreadyExists,
+                $"Category '{category.Name}' already exists.");
+        }
+
+        return category;
+    }
 }

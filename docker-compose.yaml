@@ -102,12 +102,12 @@ services:
     restart: unless-stopped
   
   proxy:
-    image: caddy:2-alpine
+    # Caddy with the built React app and the Caddyfile (web/Dockerfile).
+    image: ghcr.io/meissnerm224/eventhub-web:latest
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

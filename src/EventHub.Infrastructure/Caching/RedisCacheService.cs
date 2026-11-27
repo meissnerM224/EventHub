@@ -9,6 +9,10 @@ public class RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheS
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
+    // The cache is best-effort: a failing Redis must never fail the request.
+    // RedisTimeoutException derives from TimeoutException, not from RedisException.
+    private static bool IsCacheFailure(Exception e) => e is RedisException or TimeoutException;
+
     public async Task<T?> GetAsync<T>(string key) where T : class
     {
         try
@@ -18,9 +22,9 @@ public class RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheS
             var json = value.ToString();
             return JsonSerializer.Deserialize<T>(json, Options);
         }
-        catch (RedisException e)
+        catch (Exception e) when (IsCacheFailure(e) || e is JsonException)
         {
-            logger.LogWarning(e, "Cache red failed for {key}", key);
+            logger.LogWarning(e, "Cache read failed for {Key}", key);
             return null;
         }
     }
@@ -31,7 +35,7 @@ public class RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheS
         {
             await redis.GetDatabase().StringSetAsync(key, JsonSerializer.Serialize(value, Options), expiry);
         }
-        catch (RedisException e)
+        catch (Exception e) when (IsCacheFailure(e))
         {
             logger.LogWarning(e, "Cache write failed for {Key}", key);
         }
@@ -44,7 +48,7 @@ public class RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheS
         {
             await redis.GetDatabase().KeyDeleteAsync(key);
         }
-        catch (RedisException e)
+        catch (Exception e) when (IsCacheFailure(e))
         {
             logger.LogWarning(e, "Cache remove failed for {Key}", key);
         }
@@ -64,7 +68,7 @@ public class RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheS
                     await db.KeyDeleteAsync(key);
             }
         }
-        catch (RedisException e)
+        catch (Exception e) when (IsCacheFailure(e))
         {
             logger.LogWarning(e, "Cache invalidation failed for {Prefix}", prefix);
         }

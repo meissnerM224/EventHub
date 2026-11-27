@@ -14,6 +14,9 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Category> Categories => Set<Category>();
 
+    public const string CaseInsensitiveCollation = "case_insensitive";
+    public const string CategoryNameIndex = "IX_Categories_Name";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -51,10 +54,16 @@ public class EventHubDbContext(DbContextOptions<EventHubDbContext> options)
         });
 
         // Category
+        // "Konzert" and "konzert" are the same category. The unique index enforces that itself
+        // through a case-insensitive ICU collation (ks-level2: ignores case, keeps accents),
+        // so two concurrent requests cannot both get past the check in the service.
+        modelBuilder.HasCollation(CaseInsensitiveCollation, locale: "und-u-ks-level2", provider: "icu",
+            deterministic: false);
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(100).UseCollation(CaseInsensitiveCollation);
             entity.Property(e => e.Description).HasMaxLength(400);
+            entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Booking

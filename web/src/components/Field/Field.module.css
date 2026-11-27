@@ -1,0 +1,35 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.control {
+  font: inherit;
+  padding: 0.625rem 0.75rem;
+  color: inherit;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-button);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+.textarea {
+  min-height: 8rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.hint {
+  font-size: var(--fs-sm);
+  color: var(--c-ink-muted);
+}

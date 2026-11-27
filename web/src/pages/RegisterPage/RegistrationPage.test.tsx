@@ -157,7 +157,7 @@ describe("RegisterPage", () => {
     expect(screen.queryByText("Startseite")).not.toBeInTheDocument();
   });
 
-  it("shows a generic error on server failure", async () => {
+  it("shows the server error on server failure", async () => {
     server.use(
       http.post("/api/auth/register", () =>
         HttpResponse.json({ status: 500 }, { status: 500 }),
@@ -168,7 +168,7 @@ describe("RegisterPage", () => {
     await fillForm();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      t["common.error"],
+      t["error.status.server"],
     );
   });
 

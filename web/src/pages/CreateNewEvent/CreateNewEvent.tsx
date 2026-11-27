@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useIntl } from "react-intl";
 import styles from "./CreateNewEvent.module.css";
 import { useCategories } from "../../api/categories";
@@ -7,6 +7,12 @@ import { useCreateEvent } from "../../api/events";
 import { errorMessageId } from "../../api/errors";
 import { localInputToUtcIso } from "../../lib/datetime";
 import Banner from "../../components/Banner/Banner";
+import { Button, ButtonLink } from "../../components/Button/Button";
+import {
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "../../components/Field/Field";
 
 export default function CreateNewEvent() {
   const intl = useIntl();
@@ -75,74 +81,79 @@ export default function CreateNewEvent() {
             />
           )}
 
-          <label className={styles.field}>
-            {intl.formatMessage({ id: "createEvent.eventTitle" })}
-            <input name="title" required maxLength={200} />
-          </label>
+          <TextField
+            label={intl.formatMessage({ id: "createEvent.eventTitle" })}
+            name="title"
+            required
+            maxLength={200}
+          />
 
-          <label className={styles.field}>
-            {intl.formatMessage({ id: "createEvent.description" })}
-            <textarea name="description" required maxLength={500} />
-          </label>
+          <TextAreaField
+            label={intl.formatMessage({ id: "createEvent.description" })}
+            name="description"
+            required
+            maxLength={500}
+          />
 
           <div className={styles.row}>
-            <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.location" })}
-              <input name="location" required />
-            </label>
-            <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.category" })}
-              <select
-                name="categoryId"
-                required
-                defaultValue=""
-                disabled={isPending || isError}
-              >
-                <option value="" disabled>
-                  {intl.formatMessage({
-                    id: isPending
-                      ? "common.loading"
-                      : "createEvent.category.placeholder",
-                  })}
+            <TextField
+              label={intl.formatMessage({ id: "createEvent.location" })}
+              name="location"
+              required
+            />
+            <SelectField
+              label={intl.formatMessage({ id: "createEvent.category" })}
+              name="categoryId"
+              required
+              defaultValue=""
+              disabled={isPending || isError}
+            >
+              <option value="" disabled>
+                {intl.formatMessage({
+                  id: isPending
+                    ? "common.loading"
+                    : "createEvent.category.placeholder",
+                })}
+              </option>
+              {categories?.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
                 </option>
-                {categories?.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              ))}
+            </SelectField>
           </div>
 
           <div className={styles.row}>
-            <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.startsAt" })}
-              <input name="startAt" type="datetime-local" required />
-            </label>
-            <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.doorsOpenAt" })}
-              <input name="doorsOpenAt" type="datetime-local" required />
-            </label>
+            <TextField
+              label={intl.formatMessage({ id: "createEvent.startsAt" })}
+              name="startAt"
+              type="datetime-local"
+              required
+            />
+            <TextField
+              label={intl.formatMessage({ id: "createEvent.doorsOpenAt" })}
+              name="doorsOpenAt"
+              type="datetime-local"
+              required
+            />
           </div>
 
           <div className={styles.row}>
-            <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.maxParticipants" })}
-              <input name="maxParticipants" type="number" min={1} required />
-            </label>
-            <label className={styles.field}>
-              {intl.formatMessage({ id: "createEvent.image" })}
-              <input
-                name="image"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                aria-describedby="image-hint"
-                onChange={handleImageChange}
-              />
-              <small id="image-hint" className={styles.hint}>
-                {intl.formatMessage({ id: "createEvent.image.hint" })}
-              </small>
-            </label>
+            <TextField
+              label={intl.formatMessage({ id: "createEvent.maxParticipants" })}
+              name="maxParticipants"
+              type="number"
+              min={1}
+              required
+            />
+            <TextField
+              label={intl.formatMessage({ id: "createEvent.image" })}
+              hint={intl.formatMessage({ id: "createEvent.image.hint" })}
+              name="image"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageChange}
+            />
           </div>
 
           {previewUrl && (
@@ -158,20 +169,16 @@ export default function CreateNewEvent() {
           )}
 
           <div className={styles.actions}>
-            <Link to="/" className={styles.secondary}>
+            <ButtonLink to="/" variant="secondary">
               {intl.formatMessage({ id: "createEvent.cancel" })}
-            </Link>
-            <button
-              type="submit"
-              className={styles.submit}
-              disabled={createEvent.isPending}
-            >
+            </ButtonLink>
+            <Button type="submit" disabled={createEvent.isPending}>
               {intl.formatMessage({
                 id: createEvent.isPending
                   ? "createEvent.submitting"
                   : "createEvent.submit",
               })}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

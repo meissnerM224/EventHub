@@ -1,6 +1,7 @@
 import style from "./ErrorMessage.module.css";
 import { useIntl } from "react-intl";
 import { errorMessageId } from "../../api/errors.ts";
+import { Button } from "../Button/Button";
 type Props = {
   error: unknown;
   onRetry: () => void;
@@ -16,14 +17,9 @@ export default function ErrorMessage({ error, onRetry, retrying }: Props) {
           {intl.formatMessage({ id: errorMessageId(error) })}
         </p>
         {onRetry && (
-          <button
-            type="button"
-            className={style.retry}
-            onClick={onRetry}
-            disabled={retrying}
-          >
+          <Button onClick={onRetry} disabled={retrying}>
             {intl.formatMessage({ id: "common.retry" })}
-          </button>
+          </Button>
         )}
       </div>
     </div>

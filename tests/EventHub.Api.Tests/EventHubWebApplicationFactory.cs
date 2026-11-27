@@ -69,6 +69,8 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
     public RecordingNotificationSender Notifications =>
         Services.GetRequiredService<RecordingNotificationSender>();
 
+    public ShiftableTimeProvider Clock => Services.GetRequiredService<ShiftableTimeProvider>();
+
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -77,6 +79,10 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             services.RemoveAll<INotificationSender>();
             services.AddSingleton<RecordingNotificationSender>();
             services.AddScoped<INotificationSender>(sp => sp.GetRequiredService<RecordingNotificationSender>());
+
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<ShiftableTimeProvider>();
+            services.AddSingleton<TimeProvider>(sp => sp.GetRequiredService<ShiftableTimeProvider>());
         });
     }
 
@@ -100,6 +106,8 @@ public sealed class EventHubWebApplicationFactory : WebApplicationFactory<Progra
             ["ConnectionStrings__Default"] = _postgres.GetConnectionString(),
             ["ConnectionStrings__Redis"] = _redis.GetConnectionString(),
             ["Jwt__Key"] = TestJwtKey,
+            // All tests share one client IP; SecurityTests checks the real limit on its own host.
+            ["RateLimiting__AuthPermitLimit"] = "100000",
             ["Jwt__Issuer"] = "EventHub.Tests",
             ["Jwt__Audience"] = "EventHub.Tests",
             ["Storage__Endpoint"] = $"http://{_garage.Hostname}:{_garage.GetMappedPublicPort(3900)}",

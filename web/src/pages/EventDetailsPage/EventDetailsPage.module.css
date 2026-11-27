@@ -22,7 +22,7 @@
    Wider images lose a bit left/right, portrait images lose top/bottom. */
 .image {
   width: 100%;
-  aspect-ratio: 3 / 2; /* EventDetailsPage: 2 / 1 */
+  aspect-ratio: 3 / 2;
   object-fit: cover;
   object-position: center 30%;
 }

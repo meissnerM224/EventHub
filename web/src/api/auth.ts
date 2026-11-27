@@ -1,6 +1,7 @@
 import { ApiError, apiFetch, apiGet, apiPost } from "./client";
 import { currentUserSchema, type CurrentUser } from "./types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { resetSession } from "./queryClient";
 
 export type Credentials = {
   email: string;
@@ -22,6 +23,12 @@ export async function getMe(): Promise<CurrentUser | null> {
   }
 }
 
+// Only needs the roles – works for CurrentUser and AdminUser alike.
+export const hasRole = (
+  user: { roles: string[] } | null | undefined,
+  role: Role,
+) => user?.roles.includes(role) ?? false;
+
 export function login(credentials: Credentials): Promise<CurrentUser> {
   return apiPost("/api/auth/login", credentials, parseUser);
 }
@@ -41,9 +48,6 @@ export const Role = {
 } as const;
 export type Role = (typeof Role)[keyof typeof Role];
 
-export const hasRole = (user: CurrentUser | null | undefined, role: Role) =>
-  user?.roles.includes(role) ?? false;
-
 export const isOrganizer = (user: CurrentUser | null | undefined) =>
   hasRole(user, Role.Organizer);
 
@@ -59,17 +63,14 @@ export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: login,
-    onSuccess: (user) => queryClient.setQueryData(meKey, user),
+    onSuccess: (user) => resetSession(queryClient, user),
   });
 }
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: logout,
-    onSuccess: () => {
-      queryClient.clear();
-      queryClient.setQueryData(meKey, null);
-    },
+    onSuccess: () => resetSession(queryClient, null),
   });
 }
 
@@ -77,6 +78,6 @@ export function useRegister() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: register,
-    onSuccess: (user) => queryClient.setQueryData(meKey, user),
+    onSuccess: (user) => resetSession(queryClient, user),
   });
 }

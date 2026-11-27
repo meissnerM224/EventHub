@@ -3,8 +3,11 @@ namespace EventHub.Domain.Models;
 public static class ErrorCodes
 {
     public const string AuthInvalidCredentials = "auth.invalid_credentials";
+    public const string AuthLockedOut = "auth.locked_out";
+    public const string AuthTooManyRequests = "auth.too_many_requests";
     public const string BookingAlreadyExists = "booking.already_exists";
     public const string BookingNotFound = "booking.not_found";
+    public const string CategoryAlreadyExists = "category.already_exists";
     public const string CategoryNotFound = "category.not_found";
     public const string EventAlreadyExists = "event.already_exists";
     public const string EventAlreadyStarted = "event.already_started";
@@ -15,6 +18,7 @@ public static class ErrorCodes
     public const string EventInvalidImage = "event.invalid_image";
     public const string EventNotFound = "event.not_found";
     public const string EventNotOwner = "event.not_owner";
+    public const string FileTooManyPixels = "file.too_many_pixels";
     public const string FileMissing = "file.missing";
     public const string FileUnsupported = "file.unsupported";
     public const string UserEmailTaken = "user.email_taken";
