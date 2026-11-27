@@ -4,6 +4,9 @@ import { useIntl } from "react-intl";
 import { useRegister, useMe } from "../../api/auth";
 import { errorMessageId } from "../../api/errors.ts";
 import styles from "./RegisterPage.module.css";
+import { TextField } from "../../components/Field/Field";
+import { Button } from "../../components/Button/Button";
+import Banner from "../../components/Banner/Banner";
 
 export default function RegisterPage() {
   const intl = useIntl();
@@ -32,10 +35,10 @@ export default function RegisterPage() {
     );
   }
 
-  const errorText = passwordMismatch
-    ? intl.formatMessage({ id: "auth.register.passwordMismatch" })
+  const errorId = passwordMismatch
+    ? "auth.register.passwordMismatch"
     : register.error
-      ? intl.formatMessage({ id: errorMessageId(register.error) })
+      ? errorMessageId(register.error)
       : null;
 
   if (isPending) return null;
@@ -44,56 +47,42 @@ export default function RegisterPage() {
     <div className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <h1>{intl.formatMessage({ id: "auth.register.title" })}</h1>
-        <label>
-          {intl.formatMessage({ id: "auth.email" })}
-          <input name="email" type="email" autoComplete="email" required />
-        </label>
-        <label>
-          {intl.formatMessage({ id: "auth.displayName" })}
-          <input
-            name="displayName"
-            autoComplete="nickname"
-            required
-            maxLength={100}
-          />
-        </label>
-        <label>
-          {intl.formatMessage({ id: "auth.password" })}
-          <input
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            aria-describedby="password-hint"
-          />
-        </label>
-        <small id="password-hint" className={styles.hint}>
-          {intl.formatMessage({ id: "auth.password.hint" })}
-        </small>
-        <label>
-          {intl.formatMessage({ id: "auth.passwordConfirm" })}
-          <input
-            name="passwordConfirm"
-            type="password"
-            autoComplete="new-password"
-            required
-          />
-        </label>
-        {errorText && (
-          <p role="alert" className={styles.error}>
-            {errorText}
-          </p>
-        )}
-        <button
-          type="submit"
-          className={styles.submit}
-          disabled={register.isPending}
-        >
+        <TextField
+          label={intl.formatMessage({ id: "auth.email" })}
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+        />
+        <TextField
+          label={intl.formatMessage({ id: "auth.displayName" })}
+          name="displayName"
+          autoComplete="nickname"
+          required
+          maxLength={100}
+        />
+        <TextField
+          label={intl.formatMessage({ id: "auth.password" })}
+          hint={intl.formatMessage({ id: "auth.password.hint" })}
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+        />
+        <TextField
+          label={intl.formatMessage({ id: "auth.passwordConfirm" })}
+          name="passwordConfirm"
+          type="password"
+          autoComplete="new-password"
+          required
+        />
+        {errorId && <Banner messageId={errorId} />}
+        <Button type="submit" disabled={register.isPending}>
           {intl.formatMessage({
             id: register.isPending ? "common.loading" : "auth.register.submit",
           })}
-        </button>
+        </Button>
       </form>
     </div>
   );

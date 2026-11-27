@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { useLogout, useMe } from "../../api/auth";
 import styles from "./Header.module.css";
+import { Button, ButtonLink } from "../Button/Button";
 import { isAdmin, isOrganizer } from "../../api/auth";
 
 export default function Header() {
@@ -60,21 +61,19 @@ export default function Header() {
               >
                 {me.displayName}
               </NavLink>
-              <button
-                type="button"
-                className={styles.cta}
+              <Button
                 disabled={logout.isPending}
                 onClick={() =>
                   logout.mutate(undefined, { onSuccess: () => navigate("/") })
                 }
               >
                 {intl.formatMessage({ id: "common.logout" })}
-              </button>
+              </Button>
             </>
           ) : (
-            <Link to="/login" className={styles.cta}>
+            <ButtonLink to="/login">
               {intl.formatMessage({ id: "common.login" })}
-            </Link>
+            </ButtonLink>
           )}
         </div>
       </div>

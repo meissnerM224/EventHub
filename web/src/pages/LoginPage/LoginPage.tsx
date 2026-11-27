@@ -4,6 +4,9 @@ import { useIntl } from "react-intl";
 import { useLogin, useMe } from "../../api/auth";
 import styles from "./LoginPage.module.css";
 import { errorMessageId } from "../../api/errors.ts";
+import { TextField } from "../../components/Field/Field";
+import { Button } from "../../components/Button/Button";
+import Banner from "../../components/Banner/Banner";
 
 export default function LoginPage() {
   const intl = useIntl();
@@ -24,45 +27,35 @@ export default function LoginPage() {
     );
   }
 
-  const errorText = login.error
-    ? intl.formatMessage({ id: errorMessageId(login.error) })
-    : null;
   if (isPending) return null;
   if (user) return <Navigate to={from} replace={true} />;
   return (
     <div className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <h1>{intl.formatMessage({ id: "auth.login.title" })}</h1>
-        <label>
-          {intl.formatMessage({ id: "auth.email" })}
-          <input name="email" type="email" autoComplete="email" required />
-        </label>
-        <label>
-          {intl.formatMessage({ id: "auth.password" })}
-          <input
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-        </label>
+        <TextField
+          label={intl.formatMessage({ id: "auth.email" })}
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+        />
+        <TextField
+          label={intl.formatMessage({ id: "auth.password" })}
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
         <Link to="/forgot-password" className={styles.forgot}>
           {intl.formatMessage({ id: "auth.login.forgotPassword" })}
         </Link>
-        {errorText && (
-          <p role="alert" className={styles.error}>
-            {errorText}
-          </p>
-        )}
-        <button
-          type="submit"
-          className={styles.submit}
-          disabled={login.isPending}
-        >
+        {login.error && <Banner messageId={errorMessageId(login.error)} />}
+        <Button type="submit" disabled={login.isPending}>
           {intl.formatMessage({
             id: login.isPending ? "common.loading" : "auth.login.submit",
           })}
-        </button>
+        </Button>
         <p className={styles.switch}>
           {intl.formatMessage({ id: "auth.login.noAccount" })}{" "}
           <Link to="/register">

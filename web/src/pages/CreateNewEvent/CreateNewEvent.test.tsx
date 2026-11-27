@@ -125,8 +125,7 @@ describe("CreateNewEvent", () => {
       renderForm();
       const user = await fillForm();
       await user.upload(
-        // The label also contains the hint text, so match only the start.
-        screen.getByLabelText(new RegExp(`^${t["createEvent.image"]}`)),
+        screen.getByLabelText(t["createEvent.image"]),
         new File(["x"], "bild.png", { type: "image/png" }),
       );
 

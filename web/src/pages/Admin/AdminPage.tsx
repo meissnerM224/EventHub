@@ -10,6 +10,8 @@ import { useCategories } from "../../api/categories";
 import { errorMessageId } from "../../api/errors";
 import Banner from "../../components/Banner/Banner";
 import Spinner from "../../components/Spinner/Spinner";
+import { Button } from "../../components/Button/Button";
+import { TextField } from "../../components/Field/Field";
 import styles from "./AdminPage.module.css";
 
 export default function AdminPage() {
@@ -75,9 +77,8 @@ function UsersCard() {
                   <td>{user.email}</td>
                   <td className={styles.muted}>{user.roles.join(", ")}</td>
                   <td className={styles.actionCell}>
-                    <button
-                      type="button"
-                      className={organizer ? styles.secondary : styles.primary}
+                    <Button
+                      variant={organizer ? "secondary" : "primary"}
                       disabled={setOrganizer.isPending}
                       onClick={() =>
                         setOrganizer.mutate({
@@ -93,7 +94,7 @@ function UsersCard() {
                             ? "admin.users.revokeOrganizer"
                             : "admin.users.grantOrganizer",
                       })}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );
@@ -138,21 +139,20 @@ function CategoriesCard() {
       )}
 
       <form className={styles.form} onSubmit={handleSubmit}>
-        <label className={styles.field}>
-          {intl.formatMessage({ id: "admin.categories.name" })}
-          <input name="name" required maxLength={100} />
-        </label>
-        <label className={styles.field}>
-          {intl.formatMessage({ id: "createEvent.description" })}
-          <input name="description" maxLength={400} />
-        </label>
-        <button
-          type="submit"
-          className={styles.primary}
-          disabled={createCategory.isPending}
-        >
+        <TextField
+          label={intl.formatMessage({ id: "admin.categories.name" })}
+          name="name"
+          required
+          maxLength={100}
+        />
+        <TextField
+          label={intl.formatMessage({ id: "createEvent.description" })}
+          name="description"
+          maxLength={400}
+        />
+        <Button type="submit" disabled={createCategory.isPending}>
           {intl.formatMessage({ id: "admin.categories.submit" })}
-        </button>
+        </Button>
       </form>
 
       {createCategory.isError && (

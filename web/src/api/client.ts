@@ -66,6 +66,8 @@ export async function parseJson<T>(
   }
 }
 
+// Developer-facing only: ApiError.message ends up in logs and the console, never in the UI.
+// Users see the translated text from errorMessageId (api/errors.ts), which maps code and status.
 const fallbackMessages: Record<number, string> = {
   401: "Please sign in",
   403: "You don't have access to this",

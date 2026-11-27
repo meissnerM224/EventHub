@@ -74,19 +74,6 @@
   color: var(--c-ink-muted);
 }
 
-.cta {
-  align-self: flex-start;
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--c-primary);
-  color: var(--c-surface);
-  border-radius: var(--r-button);
-  text-decoration: none;
-}
-
-.cta:hover {
-  background: var(--c-primary-hover);
-}
-
 .bookings {
   list-style: none;
   margin: 0;
@@ -128,22 +115,6 @@
   font-size: var(--fs-sm);
 }
 
-.secondary {
-  margin-left: auto;
-  padding: var(--sp-2) var(--sp-4);
-  background: transparent;
-  color: var(--c-ink-muted);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-button);
-  font: inherit;
-  cursor: pointer;
-}
-
-.secondary:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
 .subTabs {
   display: flex;
   gap: var(--sp-2);
@@ -165,4 +136,12 @@
   background: var(--c-primary);
   border-color: var(--c-primary);
   color: var(--c-surface);
+}
+
+.start {
+  align-self: flex-start;
+}
+
+.push {
+  margin-left: auto;
 }

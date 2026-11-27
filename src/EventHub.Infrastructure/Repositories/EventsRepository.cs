@@ -1,9 +1,11 @@
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
+using EventHub.Domain.Exceptions;
 using EventHub.Domain.Interfaces;
 using EventHub.Domain.Models;
 using EventHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace EventHub.Infrastructure.Repositories;
 
@@ -112,12 +114,29 @@ public class EventsRepository(EventHubDbContext dbContext) : IEventsRepository
             })
             .ToListAsync();
 
-    public Task<bool> CategoryNameExistsAsync(string name) => dbContext.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
+    // Case-insensitive through the column collation (see EventHubDbContext).
+    public Task<bool> CategoryNameExistsAsync(string name) => dbContext.Categories.AnyAsync(c => c.Name == name);
 
     public async Task<Category> CreateCategoryAsync(Category category)
     {
         dbContext.Categories.Add(category);
-        await dbContext.SaveChangesAsync();
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        // The pre-check in the service handles the normal case. This catches the race:
+        // two requests with the same name both pass the check, the index rejects the second.
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
+                                          {
+                                              SqlState: PostgresErrorCodes.UniqueViolation,
+                                              ConstraintName: EventHubDbContext.CategoryNameIndex,
+                                          })
+        {
+            dbContext.Entry(category).State = EntityState.Detached;
+            throw new AlreadyExistException(ErrorCodes.CategoryAlreadyExists,
+                $"Category '{category.Name}' already exists.");
+        }
+
         return category;
     }
 }

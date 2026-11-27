@@ -37,9 +37,12 @@ public sealed partial class ErrorCodeTests(EventHubWebApplicationFactory factory
     [Fact]
     public async Task GetById_ReturnsEventNotFound_WhenEventDoesNotExist()
     {
-        var response = await factory.CreateClient().GetAsync($"/api/events/{Guid.NewGuid()}");
+        var id = Guid.NewGuid();
+        var response = await factory.CreateClient().GetAsync($"/api/events/{id}");
 
         await AssertProblem(response, HttpStatusCode.NotFound, ErrorCodes.EventNotFound);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal($"Event '{id}' was not found.", problem.GetProperty("detail").GetString());
     }
 
     [Fact]
@@ -282,6 +285,46 @@ public sealed partial class ErrorCodeTests(EventHubWebApplicationFactory factory
         var response = await participant.DeleteAsync($"/api/events/{eventId}/bookings/me");
 
         await AssertProblem(response, HttpStatusCode.NotFound, ErrorCodes.BookingNotFound);
+    }
+
+    [Fact]
+    public async Task Book_ReturnsEventAlreadyStarted_AfterStart()
+    {
+        var eventId = await CreateEventStartingSoonAsync(UniqueTitle("Started Book"));
+        var participant = await RegisterParticipantAsync();
+
+        using (factory.Clock.Advance(TimeSpan.FromMinutes(5)))
+        {
+            var response = await participant.PostAsync($"/api/events/{eventId}/bookings", null);
+
+            await AssertProblem(response, HttpStatusCode.BadRequest, ErrorCodes.EventAlreadyStarted);
+        }
+    }
+
+    [Fact]
+    public async Task CancelBooking_ReturnsEventAlreadyStarted_AfterStart()
+    {
+        var eventId = await CreateEventStartingSoonAsync(UniqueTitle("Started Cancel"));
+        var participant = await RegisterParticipantAsync();
+        (await participant.PostAsync($"/api/events/{eventId}/bookings", null)).EnsureSuccessStatusCode();
+
+        using (factory.Clock.Advance(TimeSpan.FromMinutes(5)))
+        {
+            var response = await participant.DeleteAsync($"/api/events/{eventId}/bookings/me");
+
+            await AssertProblem(response, HttpStatusCode.BadRequest, ErrorCodes.EventAlreadyStarted);
+        }
+    }
+
+    // Starts in 2 minutes – only a small clock shift is needed, so login tokens stay valid.
+    private async Task<Guid> CreateEventStartingSoonAsync(string title)
+    {
+        var now = factory.Clock.GetUtcNow();
+        var response = await (await OrganizerClientAsync()).PostAsJsonAsync("/api/events",
+            NewEvent(title, startAt: now.AddMinutes(2), doorsOpenAt: now.AddMinutes(1)));
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"Create event '{title}' failed: {body}");
+        return Guid.Parse(response.Headers.Location!.Segments.Last());
     }
 
     // ── Auth ─────────────────────────────────────────────────────────────

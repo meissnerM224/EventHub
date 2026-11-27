@@ -17,17 +17,4 @@
 
 .retry {
   margin-left: auto;
-  padding: var(--sp-1) var(--sp-3);
-  background: transparent;
-  color: var(--c-warning);
-  border: 1px solid var(--c-warning);
-  border-radius: var(--r-button);
-  font: inherit;
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-
-.retry:disabled {
-  opacity: 0.6;
-  cursor: progress;
 }

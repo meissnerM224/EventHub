@@ -47,9 +47,6 @@ export const Role = {
 } as const;
 export type Role = (typeof Role)[keyof typeof Role];
 
-// export const hasRole = (user: CurrentUser | null | undefined, role: Role) =>
-//   user?.roles.includes(role) ?? false;
-
 export const isOrganizer = (user: CurrentUser | null | undefined) =>
   hasRole(user, Role.Organizer);
 

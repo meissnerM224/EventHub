@@ -20,10 +20,9 @@ namespace EventHub.Infrastructure.Migrations
             migrationBuilder.Sql("""
                                  SELECT setval(
                                  pg_get_serial_sequence('"Categories"', 'Id'),
-                                 (SELECT MAX("Id") FROM "Categories")); 
+                                 (SELECT MAX("Id") FROM "Categories"));
                                  """);
         }
-
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)

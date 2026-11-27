@@ -5,6 +5,7 @@ public static class ErrorCodes
     public const string AuthInvalidCredentials = "auth.invalid_credentials";
     public const string BookingAlreadyExists = "booking.already_exists";
     public const string BookingNotFound = "booking.not_found";
+    public const string CategoryAlreadyExists = "category.already_exists";
     public const string CategoryNotFound = "category.not_found";
     public const string EventAlreadyExists = "event.already_exists";
     public const string EventAlreadyStarted = "event.already_started";
@@ -20,5 +21,4 @@ public static class ErrorCodes
     public const string UserEmailTaken = "user.email_taken";
     public const string UserNotFound = "user.not_found";
     public const string UserRegistrationFailed = "user.registration_failed";
-    public const string CategoryAlreadyExists = "category.already_exists";
 }

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { useMe } from "../../api/auth";
 import {
@@ -10,6 +10,7 @@ import { errorMessageId } from "../../api/errors";
 import type { EventDetail } from "../../api/types";
 import type { MessageId } from "../../i18n/locale";
 import styles from "./BookingBox.module.css";
+import { Button, ButtonLink } from "../Button/Button";
 
 type Props = {
   event: Pick<EventDetail, "eventId" | "availableSpots" | "isCancelled">;
@@ -40,13 +41,9 @@ export default function BookingBox({ event }: Props) {
   if (!user) {
     return (
       <div className={styles.box}>
-        <Link
-          to="/login"
-          state={{ from: location.pathname }}
-          className={styles.button}
-        >
+        <ButtonLink to="/login" state={{ from: location.pathname }}>
           {t("booking.loginToBook")}
-        </Link>
+        </ButtonLink>
       </div>
     );
   }
@@ -64,9 +61,9 @@ export default function BookingBox({ event }: Props) {
     return (
       <div className={`${styles.box} ${styles.success}`}>
         <p className={styles.text}>{t("booking.booked")}</p>
-        <button
-          type="button"
-          className={styles.secondary}
+        <Button
+          variant="secondary"
+          className={styles.push}
           disabled={busy}
           onClick={() => {
             book.reset();
@@ -74,7 +71,7 @@ export default function BookingBox({ event }: Props) {
           }}
         >
           {t(cancel.isPending ? "booking.cancelling" : "booking.cancel")}
-        </button>
+        </Button>
         {error && <ErrorText error={error} />}
       </div>
     );
@@ -92,9 +89,7 @@ export default function BookingBox({ event }: Props) {
   // 4) bookable
   return (
     <div className={styles.box}>
-      <button
-        type="button"
-        className={styles.button}
+      <Button
         disabled={busy}
         onClick={() => {
           cancel.reset();
@@ -102,7 +97,7 @@ export default function BookingBox({ event }: Props) {
         }}
       >
         {t(book.isPending ? "booking.booking" : "event.booking")}
-      </button>
+      </Button>
       {error && <ErrorText error={error} />}
     </div>
   );

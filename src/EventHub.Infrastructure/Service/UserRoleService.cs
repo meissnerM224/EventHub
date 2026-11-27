@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 namespace EventHub.Infrastructure.Service;
 
 public class UserRoleService(UserManager<AppUser> userManager, EventHubDbContext db) : IUserRoleService
-
 {
     public async Task GrantOrganizerAsync(Guid userId)
     {

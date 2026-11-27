@@ -7,6 +7,7 @@ import { formatDate } from "../../lib/format";
 import { hasStarted } from "../../lib/eventTime";
 import Spinner from "../../components/Spinner/Spinner";
 import Banner from "../../components/Banner/Banner";
+import { Button, ButtonLink } from "../../components/Button/Button";
 import styles from "./Account.module.css";
 
 type Tab = "upcoming" | "past";
@@ -53,9 +54,9 @@ export default function MyBookingsPage() {
             <p className={styles.muted}>
               {intl.formatMessage({ id: "account.bookings.empty" })}
             </p>
-            <Link to="/" className={styles.cta}>
+            <ButtonLink to="/" className={styles.start}>
               {intl.formatMessage({ id: "account.bookings.browse" })}
-            </Link>
+            </ButtonLink>
           </>
         )}
 
@@ -108,10 +109,10 @@ export default function MyBookingsPage() {
                           </span>
                         )}
                       </div>
-                      {tab === "upcoming" && (
-                        <button
-                          type="button"
-                          className={styles.secondary}
+                      {tab === "upcoming" && !booking.isCancelled && (
+                        <Button
+                          variant="secondary"
+                          className={styles.push}
                           disabled={cancel.isPending}
                           onClick={() => cancel.mutate(booking.eventId)}
                         >
@@ -120,7 +121,7 @@ export default function MyBookingsPage() {
                               ? "booking.cancelling"
                               : "booking.cancel",
                           })}
-                        </button>
+                        </Button>
                       )}
                     </li>
                   );
