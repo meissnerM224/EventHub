@@ -199,37 +199,6 @@ Known limitations, accepted for now:
 - **`GET /api/events` has no paging.** The list returns all upcoming events. With the current data size this is fine; once it grows, add `page`/`pageSize` together with paging in the web client.
 - **Every authenticated request reads the security stamp from the database.** This is a single indexed lookup by primary key; cache it in Redis if it ever shows up in profiling (with a short TTL, since the TTL is the revocation delay).
 
-### Set up the first administrator
-
-New accounts get the `Participant` role. An administrator can grant and revoke `Organizer` on the admin page (`/admin`), but no endpoint grants `Administrator` itself, so the first one is assigned directly in the database.
-
-1. Register the account through the web client or `POST /api/auth/register`.
-2. Assign the role with SQL. With Docker Compose:
-
-   ```bash
-   docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
-   INSERT INTO "UserRoles" ("UserId", "RoleId")
-   SELECT u."Id", r."Id"
-   FROM "Users" u
-   JOIN "Roles" r ON r."NormalizedName" = 'ADMINISTRATOR'
-   WHERE u."NormalizedEmail" = UPPER('admin@example.com')
-   ON CONFLICT DO NOTHING;
-   SQL
-   ```
-
-   Replace `admin@example.com` with the registered email. `INSERT 0 1` means the role was assigned; `INSERT 0 0` means the email was not found or the user already is an administrator.
-3. Sign out and sign in again. Roles are part of the JWT, so the existing session does not see the new role.
-
-To check who is an administrator:
-
-```sql
-SELECT u."Email"
-FROM "UserRoles" ur
-JOIN "Users" u ON u."Id" = ur."UserId"
-JOIN "Roles" r ON r."Id" = ur."RoleId"
-WHERE r."NormalizedName" = 'ADMINISTRATOR';
-```
-
 ## API endpoints
 
 | Method | Path | Access |
